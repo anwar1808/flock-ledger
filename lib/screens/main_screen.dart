@@ -5,7 +5,7 @@ import '../providers/chicken_provider.dart';
 import '../providers/journal_provider.dart';
 import '../providers/egg_provider.dart';
 import '../widgets/hen_icon.dart';
-import 'journal/journal_screen.dart';
+import 'home/home_screen.dart';
 import 'eggs/egg_tracker_screen.dart';
 import 'flock/flock_screen.dart';
 import 'insights/insights_screen.dart';
@@ -37,7 +37,7 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     final screens = [
-      const JournalScreen(),
+      const HomeScreen(),
       const EggTrackerScreen(),
       const FlockScreen(),
       const InsightsScreen(),

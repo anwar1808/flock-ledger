@@ -197,14 +197,35 @@ class _ChickBatchScreenState extends State<ChickBatchScreen> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      // Milestone dots
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          _milestone('Candling', 7, daysIn, context),
-                          _milestone('Lockdown', 18, daysIn, context),
-                          _milestone('Hatch!', 21, daysIn, context),
-                        ],
+                      // Milestone dots — proportionally placed at D7/21, D18/21, D21/21
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          const milestones = [
+                            (day: 7, label: 'Candling'),
+                            (day: 18, label: 'Lockdown'),
+                            (day: 21, label: 'Hatch!'),
+                          ];
+                          return SizedBox(
+                            height: 38,
+                            child: Stack(
+                              clipBehavior: Clip.none,
+                              children: milestones.map((m) {
+                                // Center each dot at its proportional position
+                                final centerX =
+                                    (m.day / 21.0) * constraints.maxWidth;
+                                return Positioned(
+                                  left: centerX - 24,
+                                  top: 0,
+                                  child: SizedBox(
+                                    width: 48,
+                                    child: _milestone(
+                                        m.label, m.day, daysIn, context),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -387,6 +408,8 @@ class _ChickBatchScreenState extends State<ChickBatchScreen> {
       String label, int day, int currentDay, BuildContext context) {
     final reached = currentDay >= day;
     return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         CircleAvatar(
           radius: 10,
@@ -402,12 +425,16 @@ class _ChickBatchScreenState extends State<ChickBatchScreen> {
           ),
         ),
         const SizedBox(height: 2),
-        Text(label,
-            style: TextStyle(
-                fontSize: 10,
-                color: reached
-                    ? Theme.of(context).colorScheme.primary
-                    : Colors.grey.shade500)),
+        Text(
+          label,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 10,
+            color: reached
+                ? Theme.of(context).colorScheme.primary
+                : Colors.grey.shade500,
+          ),
+        ),
       ],
     );
   }
