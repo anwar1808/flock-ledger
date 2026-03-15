@@ -28,13 +28,6 @@ class FlockScreen extends StatelessWidget {
         title: const Text('Flock'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.egg_outlined),
-            tooltip: 'Add from hatch',
-            onPressed: () => Navigator.push(context,
-                MaterialPageRoute(
-                    builder: (_) => const BatchHatchScreen())),
-          ),
-          IconButton(
             icon: const Icon(Icons.report_outlined),
             tooltip: 'Log loss event',
             onPressed: () => Navigator.push(context,
@@ -71,8 +64,8 @@ class FlockScreen extends StatelessWidget {
                   const SizedBox(height: 24),
                   FilledButton.icon(
                     icon: const Icon(Icons.add),
-                    label: const Text('Add a Chicken'),
-                    onPressed: () => _openAddChicken(context),
+                    label: const Text('Add a Bird'),
+                    onPressed: () => _showAddSheet(context),
                   ),
                 ],
               ),
@@ -138,16 +131,55 @@ class FlockScreen extends StatelessWidget {
         },
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _openAddChicken(context),
+        onPressed: () => _showAddSheet(context),
         child: const Icon(Icons.add),
       ),
     );
   }
 
-  void _openAddChicken(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const ChickenEditScreen()),
+  void _showAddSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 8),
+            ListTile(
+              leading: const Icon(Icons.add),
+              title: const Text('Add one bird'),
+              subtitle: const Text('Name, breed, age, photo…'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context,
+                    MaterialPageRoute(
+                        builder: (_) => const ChickenEditScreen()));
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.egg_outlined),
+              title: const Text('Add from a hatch'),
+              subtitle: const Text('Create multiple birds from the same clutch'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context,
+                    MaterialPageRoute(
+                        builder: (_) => const BatchHatchScreen()));
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
     );
   }
 

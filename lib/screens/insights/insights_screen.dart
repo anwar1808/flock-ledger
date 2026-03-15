@@ -376,8 +376,11 @@ class _HatchRateRow extends StatelessWidget {
           ),
           const SizedBox(height: 2),
           Text(
-            DateFormat('d MMM yyyy').format(batch.startDate) +
-                (batch.breed != null ? ' · ${batch.breed}' : ''),
+            [
+              DateFormat('d MMM yyyy').format(batch.startDate),
+              if (batch.breed != null) batch.breed!,
+              if (batch.incubatorType != null) batch.incubatorType!,
+            ].join(' · '),
             style: TextStyle(color: Colors.grey.shade500, fontSize: 11),
           ),
         ],
