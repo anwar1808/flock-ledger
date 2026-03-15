@@ -238,14 +238,13 @@ String _breedContext(String? breed) {
   if (lower.contains('ja87') || lower.contains('ja 87') ||
       lower.contains('7a87') || lower.contains('7 a87')) {
     extra = '''
-Known characteristics for this line (from Hubbard official documentation):
-- JA87 is a Hubbard Premium PARENT STOCK FEMALE — a SLOW-GROWTH coloured breeder bird, NOT a fast-growing commercial broiler
-- Sex-linked plumage: females carry the gold allele and show GOLDEN/BUFF/REDDISH-BROWN feathering; males in the parent cross are typically white or light silver
-- Growth is slow and controlled (≈100 g at 1 week, ≈430 g at 4 weeks, ≈850 g at 8 weeks, ≈2000 g at 24 weeks)
-- Comb and wattle development will be SUBTLE and SLOW compared to fast broilers — do not over-weight minor size differences in young chicks
-- Feather sexing is reliable in this line: wing-tip feathers noticeably longer than coverts = female; equal or shorter = male
-- Plumage colour is a strong sex indicator: golden/buff = likely female; white/silver = more likely male
-- This is a slow-to-intermediate growth production line used for label rouge markets
+Known characteristics for this line (from Hubbard official documentation and verified expert analysis):
+- JA87 is a Hubbard PARENT STOCK FEMALE breeder line. The birds being sexed are almost certainly JA87-derived commercial crosses (JA87 female × an unknown male line), bought as straight run.
+- DO NOT use plumage colour as a sex indicator. Colour profile depends on the unknown male cross — there is no confirmed sex-linked colour difference in JA87 or JA87-derived birds. Ignore colour entirely for sex assessment.
+- PRIMARY indicator: wing feather sexing — primary feathers (wing tips) noticeably longer than covert feathers = female; equal length or shorter = male. This is the most reliable cue.
+- SECONDARY: comb size and redness; wattle development; body shape and posture.
+- This is a SLOW-GROWTH line — comb and wattle development will be subtle and delayed compared to fast broilers. Do not over-weight minor comb differences.
+- Growth is slow and controlled (≈100 g at 1 week, ≈430 g at 4 weeks, ≈850 g at 8 weeks).
 
 ''';
   }
