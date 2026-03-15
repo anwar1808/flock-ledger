@@ -128,16 +128,13 @@ If you cannot read the scale clearly, set weight_grams to null.''',
       });
     }
 
-    final breedNote = breed != null && breed.isNotEmpty
-        ? 'Breed: $breed. '
-        : '';
     final ageNote = ageWeeks != null
         ? 'Age: approximately $ageWeeks weeks old. '
         : '';
 
     imageContents.add({
       'type': 'text',
-      'text': '''${breedNote}${ageNote}Please assess the sex of the chick(s) in these photos.
+      'text': '''${ageNote}Please assess the sex of the chick(s) in these photos.
 
 IMPORTANT: Base your assessment primarily on what you can directly observe in the images. Visual evidence is sovereign — breed context should only help you interpret genuinely ambiguous cues, never override clear ones.
 
@@ -148,10 +145,7 @@ Visual cues to assess (in order of reliability at this age):
 4. Body shape and posture — overall proportions, stance
 5. Colouring — any visible sex-linked colour differences
 
-${breed != null && breed.isNotEmpty ? '''Breed context:
-The breed/line is "$breed". Apply whatever you know about this specific breed or line — including growth rate profile, whether this line is known to carry sex-link feathering traits, typical comb development timeline, and any known plumage sex-link patterns. Use this knowledge to help interpret ambiguous visual cues only. Do not let breed assumptions override what is clearly visible in the photos. If you are uncertain about the characteristics of this specific line, say so in your caveats rather than guessing.
-
-''' : ''}Return ONLY valid JSON (no other text):
+${_breedContext(breed)}Return ONLY valid JSON (no other text):
 {
   "likely_sex": "female",
   "confidence": "medium",
@@ -230,6 +224,35 @@ class ChickSexResult {
     required this.reasoning,
     this.caveats,
   });
+}
+
+/// Builds a breed context block for the sexing prompt.
+/// For known lines (e.g. JA87), injects documented characteristics so Claude
+/// doesn't have to guess and doesn't default to generic broiler assumptions.
+String _breedContext(String? breed) {
+  if (breed == null || breed.isEmpty) return '';
+
+  final lower = breed.toLowerCase();
+  String extra = '';
+
+  if (lower.contains('ja87') || lower.contains('ja 87')) {
+    extra = '''
+Known characteristics for this line (from Hubbard official documentation):
+- JA87 is a Hubbard Premium PARENT STOCK FEMALE — a SLOW-GROWTH coloured breeder bird, NOT a fast-growing commercial broiler
+- Sex-linked plumage: females carry the gold allele and show GOLDEN/BUFF/REDDISH-BROWN feathering; males in the parent cross are typically white or light silver
+- Growth is slow and controlled (≈100 g at 1 week, ≈430 g at 4 weeks, ≈850 g at 8 weeks, ≈2000 g at 24 weeks)
+- Comb and wattle development will be SUBTLE and SLOW compared to fast broilers — do not over-weight minor size differences in young chicks
+- Feather sexing is reliable in this line: wing-tip feathers noticeably longer than coverts = female; equal or shorter = male
+- Plumage colour is a strong sex indicator: golden/buff = likely female; white/silver = more likely male
+- This is a slow-to-intermediate growth production line used for label rouge markets
+
+''';
+  }
+
+  return '''Breed context:
+The breed/line is "$breed". ${extra}Apply whatever you know about this specific breed or line — including growth rate profile, whether this line is known to carry sex-link feathering traits, typical comb development timeline, and any known plumage sex-link patterns. Use this knowledge to help interpret ambiguous visual cues only. Do not let breed assumptions override what is clearly visible in the photos. If you are uncertain about the characteristics of this specific line, say so in your caveats rather than guessing.
+
+''';
 }
 
 class ClaudeServiceException implements Exception {
