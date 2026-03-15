@@ -222,6 +222,17 @@ class ChickenProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Permanently deletes a flock group and every bird in it (plus their egg records via DB).
+  Future<List<String>> deleteFlockGroupWithBirds(String groupId) async {
+    final birdIds = chickensInGroup(groupId).map((c) => c.id).toList();
+    await DatabaseHelper.instance.deleteChickensInGroup(groupId);
+    await DatabaseHelper.instance.deleteFlockGroup(groupId);
+    _chickens.removeWhere((c) => c.flockGroupId == groupId);
+    _flockGroups.removeWhere((g) => g.id == groupId);
+    notifyListeners();
+    return birdIds; // caller can use these to clean up EggProvider
+  }
+
   /// Creates multiple chickens from a single hatch, named "{prefix} 1", "{prefix} 2", …
   Future<List<Chicken>> addHatchBatch({
     required String prefix,

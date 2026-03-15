@@ -21,6 +21,11 @@ class EggProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void removeRecordsForChicken(String chickenId) {
+    _records.removeWhere((r) => r.chickenId == chickenId);
+    notifyListeners();
+  }
+
   Future<EggRecord> addRecord({
     String? chickenId,
     String? breedNote,

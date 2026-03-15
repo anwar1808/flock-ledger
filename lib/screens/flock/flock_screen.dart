@@ -100,6 +100,13 @@ class FlockScreen extends StatelessWidget {
               hexColor: section.group != null
                   ? _hexColor(section.group!.colorHex)
                   : Colors.grey.shade400,
+              onLongPress: section.group != null
+                  ? () => _showGroupActions(
+                        context,
+                        section.group!,
+                        section.chickens.length,
+                      )
+                  : null,
             ));
             for (final chicken in section.chickens) {
               items.add(_ChickenCard(
@@ -112,6 +119,8 @@ class FlockScreen extends StatelessWidget {
                       builder: (_) =>
                           ChickenDetailScreen(chickenId: chicken.id)),
                 ),
+                onLongPress: () =>
+                    _showBirdActions(context, chicken),
               ));
             }
           }
@@ -183,6 +192,149 @@ class FlockScreen extends StatelessWidget {
     );
   }
 
+  void _showBirdActions(BuildContext context, Chicken chicken) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 4),
+            ListTile(
+              title: Text(chicken.name,
+                  style: const TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: Text(chicken.displayTerm),
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: const Text('Edit'),
+              onTap: () {
+                Navigator.pop(ctx);
+                Navigator.push(context, MaterialPageRoute(
+                    builder: (_) => ChickenEditScreen(chicken: chicken)));
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.delete_outline, color: Theme.of(ctx).colorScheme.error),
+              title: Text('Delete',
+                  style: TextStyle(color: Theme.of(ctx).colorScheme.error)),
+              onTap: () {
+                Navigator.pop(ctx);
+                _confirmDeleteBird(context, chicken);
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _confirmDeleteBird(BuildContext context, Chicken chicken) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete bird?'),
+        content: Text(
+            'This will permanently delete ${chicken.name} and all their egg records. This cannot be undone.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(ctx).colorScheme.error),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await context.read<ChickenProvider>().deleteChicken(chicken.id);
+              context.read<EggProvider>().removeRecordsForChicken(chicken.id);
+            },
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showGroupActions(BuildContext context, FlockGroup group, int birdCount) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 4),
+            ListTile(
+              title: Text(group.name,
+                  style: const TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: Text('$birdCount ${birdCount == 1 ? 'bird' : 'birds'}'),
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: Icon(Icons.delete_outline,
+                  color: Theme.of(ctx).colorScheme.error),
+              title: Text('Delete flock',
+                  style: TextStyle(color: Theme.of(ctx).colorScheme.error)),
+              onTap: () {
+                Navigator.pop(ctx);
+                _confirmDeleteGroup(context, group, birdCount);
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _confirmDeleteGroup(BuildContext context, FlockGroup group, int birdCount) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete entire flock?'),
+        content: Text(
+            'This will permanently delete "${group.name}" and all $birdCount ${birdCount == 1 ? 'bird' : 'birds'} in it, including their egg records. This cannot be undone.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(ctx).colorScheme.error),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final deletedIds = await context
+                  .read<ChickenProvider>()
+                  .deleteFlockGroupWithBirds(group.id);
+              final eggProvider = context.read<EggProvider>();
+              for (final id in deletedIds) {
+                eggProvider.removeRecordsForChicken(id);
+              }
+            },
+            child: const Text('Delete all'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _manageGroups(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -206,10 +358,12 @@ class _Section {
 class _GroupHeader extends StatefulWidget {
   final _Section section;
   final Color hexColor;
+  final VoidCallback? onLongPress;
 
   const _GroupHeader({
     required this.section,
     required this.hexColor,
+    this.onLongPress,
   });
 
   @override
@@ -289,6 +443,7 @@ class _GroupHeaderState extends State<_GroupHeader> {
                 _controller.text = name;
                 setState(() => _editing = true);
               },
+              onLongPress: widget.onLongPress,
               child: Text(
                 name,
                 style: const TextStyle(
@@ -580,11 +735,13 @@ class _ChickenCard extends StatelessWidget {
   final Chicken chicken;
   final int eggsThisWeek;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
 
   const _ChickenCard({
     required this.chicken,
     required this.eggsThisWeek,
     required this.onTap,
+    this.onLongPress,
   });
 
   @override
@@ -593,6 +750,7 @@ class _ChickenCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       child: InkWell(
         onTap: onTap,
+        onLongPress: onLongPress,
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(12),

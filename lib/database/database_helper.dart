@@ -259,7 +259,21 @@ class DatabaseHelper {
 
   Future<void> deleteChicken(String id) async {
     final db = await database;
+    await db.delete('egg_records', where: 'chicken_id = ?', whereArgs: [id]);
     await db.delete('chickens', where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<void> deleteChickensInGroup(String groupId) async {
+    final db = await database;
+    // Get IDs first so we can delete their egg records
+    final rows = await db.query('chickens',
+        columns: ['id'], where: 'flock_group_id = ?', whereArgs: [groupId]);
+    for (final row in rows) {
+      final id = row['id'] as String;
+      await db.delete('egg_records', where: 'chicken_id = ?', whereArgs: [id]);
+    }
+    await db.delete('chickens',
+        where: 'flock_group_id = ?', whereArgs: [groupId]);
   }
 
   Future<List<Chicken>> getAllChickens({bool activeOnly = false}) async {
