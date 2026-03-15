@@ -11,6 +11,7 @@ class Chicken {
   final String? eggColorCategory;
   final List<String> eggSamplePhotos;
   final bool isActive;
+  final String? flockGroupId;
   final DateTime createdAt;
 
   const Chicken({
@@ -24,6 +25,7 @@ class Chicken {
     this.eggColorCategory,
     this.eggSamplePhotos = const [],
     this.isActive = true,
+    this.flockGroupId,
     required this.createdAt,
   });
 
@@ -40,6 +42,7 @@ class Chicken {
       'egg_sample_photos_json':
           eggSamplePhotos.isEmpty ? null : jsonEncode(eggSamplePhotos),
       'is_active': isActive ? 1 : 0,
+      'flock_group_id': flockGroupId,
       'created_at': createdAt.toIso8601String(),
     };
   }
@@ -63,9 +66,13 @@ class Chicken {
       eggColorCategory: map['egg_color_category'] as String?,
       eggSamplePhotos: samplePhotos,
       isActive: (map['is_active'] as int) == 1,
+      flockGroupId: map['flock_group_id'] as String?,
       createdAt: DateTime.parse(map['created_at'] as String),
     );
   }
+
+  // Use a sentinel to allow explicitly clearing flockGroupId to null.
+  static const _clear = Object();
 
   Chicken copyWith({
     String? id,
@@ -78,6 +85,7 @@ class Chicken {
     String? eggColorCategory,
     List<String>? eggSamplePhotos,
     bool? isActive,
+    Object? flockGroupId = _clear,
     DateTime? createdAt,
   }) {
     return Chicken(
@@ -91,6 +99,9 @@ class Chicken {
       eggColorCategory: eggColorCategory ?? this.eggColorCategory,
       eggSamplePhotos: eggSamplePhotos ?? this.eggSamplePhotos,
       isActive: isActive ?? this.isActive,
+      flockGroupId: identical(flockGroupId, _clear)
+          ? this.flockGroupId
+          : flockGroupId as String?,
       createdAt: createdAt ?? this.createdAt,
     );
   }

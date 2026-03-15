@@ -30,6 +30,7 @@ class _ChickenEditScreenState extends State<ChickenEditScreen> {
   DateTime? _hatchDate;
   String? _photoPath;
   String? _eggColorCategory;
+  String? _flockGroupId;
   List<String> _samplePhotos = [];
   bool _isActive = true;
   bool _saving = false;
@@ -50,6 +51,7 @@ class _ChickenEditScreenState extends State<ChickenEditScreen> {
       _eggColorCategory = c.eggColorCategory;
       _samplePhotos = List.from(c.eggSamplePhotos);
       _isActive = c.isActive;
+      _flockGroupId = c.flockGroupId;
     }
   }
 
@@ -128,6 +130,7 @@ class _ChickenEditScreenState extends State<ChickenEditScreen> {
         eggColorCategory: _eggColorCategory,
         eggSamplePhotos: _samplePhotos,
         isActive: _isActive,
+        flockGroupId: _flockGroupId,
       );
       await provider.updateChicken(updated);
     } else {
@@ -146,6 +149,7 @@ class _ChickenEditScreenState extends State<ChickenEditScreen> {
         photoPath: _photoPath,
         eggColorCategory: _eggColorCategory,
         eggSamplePhotos: _samplePhotos,
+        flockGroupId: _flockGroupId,
       );
     }
 
@@ -255,6 +259,48 @@ class _ChickenEditScreenState extends State<ChickenEditScreen> {
               textCapitalization: TextCapitalization.words,
             ),
             const SizedBox(height: 12),
+
+            // Flock group
+            Consumer<ChickenProvider>(
+              builder: (context, provider, _) {
+                final groups = provider.flockGroups;
+                if (groups.isEmpty) return const SizedBox.shrink();
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    DropdownButtonFormField<String?>(
+                      value: _flockGroupId,
+                      decoration:
+                          const InputDecoration(labelText: 'Flock group'),
+                      items: [
+                        const DropdownMenuItem<String?>(
+                          value: null,
+                          child: Text('Ungrouped'),
+                        ),
+                        ...groups.map((g) {
+                          final hex = g.colorHex.replaceAll('#', '');
+                          final color =
+                              Color(int.parse('FF$hex', radix: 16));
+                          return DropdownMenuItem<String?>(
+                            value: g.id,
+                            child: Row(
+                              children: [
+                                CircleAvatar(
+                                    radius: 6, backgroundColor: color),
+                                const SizedBox(width: 8),
+                                Text(g.name),
+                              ],
+                            ),
+                          );
+                        }),
+                      ],
+                      onChanged: (v) => setState(() => _flockGroupId = v),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                );
+              },
+            ),
 
             // Hatch date
             ListTile(

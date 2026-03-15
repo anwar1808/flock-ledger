@@ -2,6 +2,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 
 import '../models/chicken.dart';
+import '../models/flock_group.dart';
 import '../models/journal_entry.dart';
 import '../models/chick_batch.dart';
 import '../models/egg_record.dart';
@@ -22,12 +23,23 @@ class DatabaseHelper {
     final path = join(dbPath, 'chicken_journal.db');
     return openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
     );
   }
 
   Future<void> _onCreate(Database db, int version) async {
+    await db.execute('''
+      CREATE TABLE flock_groups (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        color_hex TEXT NOT NULL,
+        notes TEXT,
+        created_at TEXT NOT NULL
+      )
+    ''');
+
     await db.execute('''
       CREATE TABLE chickens (
         id TEXT PRIMARY KEY,
@@ -40,7 +52,9 @@ class DatabaseHelper {
         egg_color_category TEXT,
         egg_sample_photos_json TEXT,
         is_active INTEGER NOT NULL DEFAULT 1,
-        created_at TEXT NOT NULL
+        flock_group_id TEXT,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (flock_group_id) REFERENCES flock_groups(id)
       )
     ''');
 
@@ -99,6 +113,53 @@ class DatabaseHelper {
     await db.execute('CREATE INDEX idx_eggs_date ON egg_records(date DESC)');
     await db.execute(
         'CREATE INDEX idx_eggs_chicken ON egg_records(chicken_id)');
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS flock_groups (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          color_hex TEXT NOT NULL,
+          notes TEXT,
+          created_at TEXT NOT NULL
+        )
+      ''');
+      await db.execute(
+          'ALTER TABLE chickens ADD COLUMN flock_group_id TEXT REFERENCES flock_groups(id)');
+    }
+  }
+
+  // ─────────────────────────────────────────
+  // FLOCK GROUPS
+  // ─────────────────────────────────────────
+
+  Future<void> insertFlockGroup(FlockGroup group) async {
+    final db = await database;
+    await db.insert('flock_groups', group.toMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<void> updateFlockGroup(FlockGroup group) async {
+    final db = await database;
+    await db.update('flock_groups', group.toMap(),
+        where: 'id = ?', whereArgs: [group.id]);
+  }
+
+  Future<void> deleteFlockGroup(String id) async {
+    final db = await database;
+    // Unlink any chickens that belong to this group
+    await db.update('chickens', {'flock_group_id': null},
+        where: 'flock_group_id = ?', whereArgs: [id]);
+    await db.delete('flock_groups', where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<List<FlockGroup>> getAllFlockGroups() async {
+    final db = await database;
+    final maps =
+        await db.query('flock_groups', orderBy: 'name ASC');
+    return maps.map(FlockGroup.fromMap).toList();
   }
 
   // ─────────────────────────────────────────
