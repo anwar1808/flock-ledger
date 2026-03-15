@@ -26,6 +26,7 @@ class _ChickSexingScreenState extends State<ChickSexingScreen> {
   ChickSexResult? _result;
   bool _analysing = false;
   String? _error;
+  int _thumbnailIndex = 0;
 
   @override
   void initState() {
@@ -55,16 +56,17 @@ class _ChickSexingScreenState extends State<ChickSexingScreen> {
   }
 
   Future<void> _pickPhoto() async {
-    if (_photos.length >= 4) {
+    if (_photos.length >= 8) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Maximum 4 photos')),
+        const SnackBar(content: Text('Maximum 8 photos')),
       );
       return;
     }
-    final picked =
-        await _picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
-    if (picked != null && mounted) {
-      setState(() => _photos.add(File(picked.path)));
+    final remaining = 8 - _photos.length;
+    final picked = await _picker.pickMultiImage(imageQuality: 80);
+    if (picked.isNotEmpty && mounted) {
+      final toAdd = picked.take(remaining).map((x) => File(x.path)).toList();
+      setState(() => _photos.addAll(toAdd));
     }
   }
 
@@ -92,6 +94,7 @@ class _ChickSexingScreenState extends State<ChickSexingScreen> {
       _analysing = true;
       _result = null;
       _error = null;
+      _thumbnailIndex = 0;
     });
 
     try {
@@ -121,7 +124,11 @@ class _ChickSexingScreenState extends State<ChickSexingScreen> {
         ? 'unknown'
         : _result!.likelySex;
 
-    await provider.updateChicken(chicken.copyWith(gender: gender));
+    final selectedPhoto = _photos.isNotEmpty ? _photos[_thumbnailIndex] : null;
+    await provider.updateChicken(chicken.copyWith(
+      gender: gender,
+      photoPath: selectedPhoto?.path ?? chicken.photoPath,
+    ));
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -164,8 +171,10 @@ class _ChickSexingScreenState extends State<ChickSexingScreen> {
           TextFormField(
             controller: _breedController,
             decoration: const InputDecoration(
-              labelText: 'Breed (optional)',
-              hintText: 'e.g. Silkie, Rhode Island Red',
+              labelText: 'Breed & line (optional)',
+              hintText: 'e.g. Hubbard 787, Ross 308, Silkie, RIR',
+              helperText:
+                  'Include the line or variety if known — it improves accuracy',
             ),
             textCapitalization: TextCapitalization.words,
           ),
@@ -181,7 +190,7 @@ class _ChickSexingScreenState extends State<ChickSexingScreen> {
           const SizedBox(height: 20),
 
           // Photo picker
-          Text('Photos (up to 4)',
+          Text('Photos (up to 8)',
               style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: 8),
           Wrap(
@@ -212,7 +221,7 @@ class _ChickSexingScreenState extends State<ChickSexingScreen> {
                       ),
                     ],
                   )),
-              if (_photos.length < 4)
+              if (_photos.length < 8)
                 GestureDetector(
                   onTap: _pickPhoto,
                   child: Container(
@@ -270,6 +279,62 @@ class _ChickSexingScreenState extends State<ChickSexingScreen> {
                       color: Theme.of(context)
                           .colorScheme
                           .onErrorContainer)),
+            ),
+          ],
+
+          // Thumbnail picker (shown after analysis when saving is possible)
+          if (_result != null && widget.chickenId != null && _photos.length > 1) ...[
+            const SizedBox(height: 24),
+            Text('Profile photo',
+                style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: 6),
+            Text(
+              'Tap a photo to use it as this bird\'s profile picture',
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _photos.asMap().entries.map((e) {
+                final selected = e.key == _thumbnailIndex;
+                return GestureDetector(
+                  onTap: () => setState(() => _thumbnailIndex = e.key),
+                  child: Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.file(e.value,
+                            width: 80, height: 80, fit: BoxFit.cover),
+                      ),
+                      if (selected)
+                        Positioned.fill(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: Theme.of(context).colorScheme.primary,
+                                width: 3,
+                              ),
+                            ),
+                            child: Align(
+                              alignment: Alignment.bottomRight,
+                              child: Container(
+                                margin: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.check,
+                                    size: 14, color: Colors.white),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              }).toList(),
             ),
           ],
 
