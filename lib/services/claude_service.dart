@@ -235,7 +235,8 @@ String _breedContext(String? breed) {
   final lower = breed.toLowerCase();
   String extra = '';
 
-  if (lower.contains('ja87') || lower.contains('ja 87')) {
+  if (lower.contains('ja87') || lower.contains('ja 87') ||
+      lower.contains('7a87') || lower.contains('7 a87')) {
     extra = '''
 Known characteristics for this line (from Hubbard official documentation):
 - JA87 is a Hubbard Premium PARENT STOCK FEMALE — a SLOW-GROWTH coloured breeder bird, NOT a fast-growing commercial broiler
