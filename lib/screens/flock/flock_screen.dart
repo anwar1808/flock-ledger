@@ -92,15 +92,6 @@ class FlockScreen extends StatelessWidget {
                     hexColor: section.group != null
                         ? _hexColor(section.group!.colorHex)
                         : Colors.grey.shade400,
-                    onEdit: section.group != null
-                        ? () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => FlockGroupEditScreen(
-                                    group: section.group),
-                              ),
-                            )
-                        : null,
                   );
                 }
                 cursor++;
@@ -158,23 +149,59 @@ class _Section {
   _Section({required this.group, required this.chickens});
 }
 
-// ─── Group header ─────────────────────────────────────────────────────────────
+// ─── Group header (with inline rename) ───────────────────────────────────────
 
-class _GroupHeader extends StatelessWidget {
+class _GroupHeader extends StatefulWidget {
   final _Section section;
   final Color hexColor;
-  final VoidCallback? onEdit;
 
   const _GroupHeader({
     required this.section,
     required this.hexColor,
-    this.onEdit,
   });
 
   @override
+  State<_GroupHeader> createState() => _GroupHeaderState();
+}
+
+class _GroupHeaderState extends State<_GroupHeader> {
+  bool _editing = false;
+  late TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(
+        text: widget.section.group?.name ?? 'Ungrouped');
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _commit() async {
+    final newName = _controller.text.trim();
+    if (newName.isEmpty) {
+      setState(() => _editing = false);
+      return;
+    }
+    final provider = context.read<ChickenProvider>();
+    if (widget.section.group != null) {
+      await provider.updateFlockGroup(
+          widget.section.group!.copyWith(name: newName));
+    } else {
+      // "Ungrouped" → create a real group and move chickens into it
+      await provider.nameUngroupedChickens(name: newName);
+    }
+    if (mounted) setState(() => _editing = false);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final name = section.group?.name ?? 'Ungrouped';
-    final count = section.chickens.length;
+    final name = widget.section.group?.name ?? 'Ungrouped';
+    final count = widget.section.chickens.length;
 
     return Padding(
       padding: const EdgeInsets.only(top: 16, bottom: 6),
@@ -183,29 +210,63 @@ class _GroupHeader extends StatelessWidget {
           Container(
             width: 12,
             height: 12,
-            decoration: BoxDecoration(color: hexColor, shape: BoxShape.circle),
+            decoration: BoxDecoration(
+                color: widget.hexColor, shape: BoxShape.circle),
           ),
           const SizedBox(width: 8),
-          Text(
-            name,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-          ),
-          const SizedBox(width: 6),
-          Text(
-            '$count ${count == 1 ? 'hen' : 'hens'}',
-            style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
-          ),
-          const Spacer(),
-          if (onEdit != null)
-            InkWell(
-              onTap: onEdit,
-              borderRadius: BorderRadius.circular(20),
-              child: Padding(
-                padding: const EdgeInsets.all(4),
-                child: Icon(Icons.edit_outlined,
-                    size: 16, color: Colors.grey.shade500),
+          if (_editing)
+            Expanded(
+              child: TextField(
+                controller: _controller,
+                autofocus: true,
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold, fontSize: 14),
+                decoration: const InputDecoration(
+                  isDense: true,
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  border: OutlineInputBorder(),
+                ),
+                onSubmitted: (_) => _commit(),
+                onTapOutside: (_) => _commit(),
+              ),
+            )
+          else ...[
+            GestureDetector(
+              onTap: () {
+                _controller.text = name;
+                setState(() => _editing = true);
+              },
+              child: Text(
+                name,
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold, fontSize: 14),
               ),
             ),
+            const SizedBox(width: 6),
+            Text(
+              '$count ${count == 1 ? 'hen' : 'hens'}',
+              style:
+                  TextStyle(color: Colors.grey.shade500, fontSize: 12),
+            ),
+            const Spacer(),
+            if (widget.section.group != null)
+              InkWell(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => FlockGroupEditScreen(
+                        group: widget.section.group),
+                  ),
+                ),
+                borderRadius: BorderRadius.circular(20),
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: Icon(Icons.edit_outlined,
+                      size: 16, color: Colors.grey.shade500),
+                ),
+              ),
+          ],
         ],
       ),
     );
@@ -256,13 +317,13 @@ class _ManageGroupsSheet extends StatelessWidget {
                   ],
                 ),
               ),
-              if (groups.isEmpty)
+              if (groups.isEmpty && provider.ungroupedChickens.isEmpty)
                 Padding(
                   padding: const EdgeInsets.all(24),
                   child: Text('No groups yet.',
                       style: TextStyle(color: Colors.grey.shade500)),
                 )
-              else
+              else ...[
                 ...groups.map((g) {
                   final hex = g.colorHex.replaceAll('#', '');
                   final color = Color(int.parse('FF$hex', radix: 16));
@@ -285,12 +346,71 @@ class _ManageGroupsSheet extends StatelessWidget {
                     },
                   );
                 }),
+                // Ungrouped row
+                if (provider.ungroupedChickens.isNotEmpty)
+                  _UngroupedSheetTile(
+                      count: provider.ungroupedChickens.length),
+              ],
               const SizedBox(height: 16),
             ],
           ),
         );
       },
     );
+  }
+}
+
+// ─── Ungrouped tile in manage sheet ──────────────────────────────────────────
+
+class _UngroupedSheetTile extends StatelessWidget {
+  final int count;
+  const _UngroupedSheetTile({required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: CircleAvatar(radius: 10, backgroundColor: Colors.grey.shade400),
+      title: const Text('Ungrouped'),
+      subtitle: Text('$count ${count == 1 ? 'hen' : 'hens'} · tap to name this group'),
+      trailing: const Icon(Icons.edit_outlined),
+      onTap: () => _promptRename(context),
+    );
+  }
+
+  void _promptRename(BuildContext context) {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Name this group'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: 'Group name',
+            hintText: 'e.g. Main Flock',
+          ),
+          textCapitalization: TextCapitalization.words,
+          onSubmitted: (_) => _save(ctx, controller.text),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel')),
+          FilledButton(
+              onPressed: () => _save(ctx, controller.text),
+              child: const Text('Create')),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _save(BuildContext ctx, String name) async {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) return;
+    Navigator.pop(ctx); // close dialog
+    Navigator.pop(ctx); // close sheet
+    await ctx.read<ChickenProvider>().nameUngroupedChickens(name: trimmed);
   }
 }
 

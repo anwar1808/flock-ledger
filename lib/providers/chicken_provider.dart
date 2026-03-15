@@ -136,6 +136,23 @@ class ChickenProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Converts ungrouped chickens into a named group.
+  /// Creates the group then assigns all currently-ungrouped chickens to it.
+  Future<FlockGroup> nameUngroupedChickens({
+    required String name,
+    String colorHex = '#5D8A3C',
+  }) async {
+    final group = await addFlockGroup(name: name, colorHex: colorHex);
+    for (final chicken in ungroupedChickens) {
+      final updated = chicken.copyWith(flockGroupId: group.id);
+      await DatabaseHelper.instance.updateChicken(updated);
+      final index = _chickens.indexWhere((c) => c.id == chicken.id);
+      if (index != -1) _chickens[index] = updated;
+    }
+    notifyListeners();
+    return group;
+  }
+
   FlockGroup? getFlockGroupById(String id) {
     try {
       return _flockGroups.firstWhere((g) => g.id == id);
