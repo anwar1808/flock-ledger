@@ -9,6 +9,7 @@ import '../../models/chicken.dart';
 import '../../models/egg_record.dart';
 import '../../utils/egg_color_matcher.dart';
 import 'chicken_edit_screen.dart';
+import '../../widgets/hen_icon.dart';
 import '../journal/chick_sexing_screen.dart';
 
 class ChickenDetailScreen extends StatelessWidget {
@@ -92,11 +93,14 @@ class _ChickenHeader extends StatelessWidget {
                       width: 80,
                       height: 80,
                       color: Theme.of(context).colorScheme.primaryContainer,
-                      child: Icon(Icons.pets,
-                          size: 40,
+                      child: Center(
+                        child: HenIcon(
+                          size: 48,
                           color: Theme.of(context)
                               .colorScheme
-                              .onPrimaryContainer),
+                              .onPrimaryContainer,
+                        ),
+                      ),
                     ),
             ),
             const SizedBox(width: 16),

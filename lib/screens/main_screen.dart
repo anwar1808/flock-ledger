@@ -5,6 +5,7 @@ import '../providers/chicken_provider.dart';
 import '../providers/journal_provider.dart';
 import '../providers/egg_provider.dart';
 import '../widgets/hen_icon.dart';
+import '../widgets/coop_icon.dart';
 import 'home/home_screen.dart';
 import 'eggs/egg_tracker_screen.dart';
 import 'flock/flock_screen.dart';
@@ -53,9 +54,9 @@ class _MainScreenState extends State<MainScreen> {
         onDestinationSelected: (i) => setState(() => _selectedIndex = i),
         destinations: const [
           NavigationDestination(
-            icon: Icon(Icons.book_outlined),
-            selectedIcon: Icon(Icons.book),
-            label: 'Journal',
+            icon: CoopIcon(),
+            selectedIcon: CoopIcon(),
+            label: 'Home',
           ),
           NavigationDestination(
             icon: Icon(Icons.egg_outlined),

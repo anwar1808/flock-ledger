@@ -10,6 +10,7 @@ import 'chicken_detail_screen.dart';
 import 'chicken_edit_screen.dart';
 import 'flock_group_edit_screen.dart';
 import 'loss_event_screen.dart';
+import '../../widgets/hen_icon.dart';
 
 class FlockScreen extends StatelessWidget {
   const FlockScreen({super.key});
@@ -53,7 +54,7 @@ class FlockScreen extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.pets, size: 64, color: Colors.grey),
+                  HenIcon(size: 64, color: Colors.grey),
                   const SizedBox(height: 16),
                   const Text(
                     'No birds yet — add your first one!',
@@ -489,8 +490,7 @@ class _ArchivedSection extends StatelessWidget {
                                 width: 48,
                                 height: 48,
                                 color: Colors.grey.shade200,
-                                child: Icon(Icons.pets,
-                                    color: Colors.grey.shade400),
+                                child: HenIcon(size: 28, color: Colors.grey.shade400),
                               ),
                       ),
                       const SizedBox(width: 12),
@@ -573,11 +573,13 @@ class _ChickenCard extends StatelessWidget {
                         color: Theme.of(context)
                             .colorScheme
                             .primaryContainer,
-                        child: Icon(
-                          Icons.pets,
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onPrimaryContainer,
+                        child: Center(
+                          child: HenIcon(
+                            size: 32,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onPrimaryContainer,
+                          ),
                         ),
                       ),
               ),

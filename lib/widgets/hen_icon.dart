@@ -4,13 +4,15 @@ import 'package:flutter/material.dart';
 /// Picks up colour and size automatically from the surrounding IconTheme,
 /// so it works seamlessly inside NavigationBar destinations.
 class HenIcon extends StatelessWidget {
-  const HenIcon({super.key});
+  final double? size;
+  final Color? color;
+  const HenIcon({super.key, this.size, this.color});
 
   @override
   Widget build(BuildContext context) {
     final theme = IconTheme.of(context);
-    final color = theme.color ?? Theme.of(context).colorScheme.onSurface;
-    final size = theme.size ?? 24.0;
+    final color = this.color ?? theme.color ?? Theme.of(context).colorScheme.onSurface;
+    final size = this.size ?? theme.size ?? 24.0;
     return SizedBox(
       width: size,
       height: size,

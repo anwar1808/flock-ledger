@@ -28,6 +28,26 @@ class _ChickSexingScreenState extends State<ChickSexingScreen> {
   String? _error;
 
   @override
+  void initState() {
+    super.initState();
+    if (widget.chickenId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final chicken =
+            context.read<ChickenProvider>().getById(widget.chickenId!);
+        if (chicken != null) {
+          if (chicken.breed != null && chicken.breed!.isNotEmpty) {
+            _breedController.text = chicken.breed!;
+          }
+          final days = chicken.currentAgeInDays;
+          if (days != null) {
+            _ageController.text = (days ~/ 7).toString();
+          }
+        }
+      });
+    }
+  }
+
+  @override
   void dispose() {
     _breedController.dispose();
     _ageController.dispose();
