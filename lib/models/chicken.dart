@@ -12,6 +12,12 @@ class Chicken {
   final List<String> eggSamplePhotos;
   final bool isActive;
   final String? flockGroupId;
+  /// 'female' | 'male' | 'unknown'
+  final String gender;
+  /// 'hatched' | 'bought'
+  final String acquiredVia;
+  final DateTime? buyDate;
+  final int? ageAtPurchaseWeeks;
   final DateTime createdAt;
 
   const Chicken({
@@ -26,8 +32,57 @@ class Chicken {
     this.eggSamplePhotos = const [],
     this.isActive = true,
     this.flockGroupId,
+    this.gender = 'unknown',
+    this.acquiredVia = 'hatched',
+    this.buyDate,
+    this.ageAtPurchaseWeeks,
     required this.createdAt,
   });
+
+  // ─── Computed age ───────────────────────────────────────────────────────────
+
+  /// Best-known hatch date. For bought chickens, back-calculated from
+  /// buy date and age at purchase.
+  DateTime? get estimatedHatchDate {
+    if (acquiredVia == 'hatched') return hatchDate;
+    if (buyDate != null && ageAtPurchaseWeeks != null) {
+      return buyDate!.subtract(Duration(days: ageAtPurchaseWeeks! * 7));
+    }
+    return hatchDate;
+  }
+
+  /// Age in days from estimated hatch date to today.
+  int? get currentAgeInDays {
+    final h = estimatedHatchDate;
+    if (h == null) return null;
+    return DateTime.now().difference(h).inDays.abs();
+  }
+
+  /// True when age is estimated (bought chicken).
+  bool get isApproximateAge => acquiredVia == 'bought';
+
+  /// Human-readable age string, e.g. "9 weeks", "7 months", "2 years 3 months".
+  String get ageDisplay {
+    final days = currentAgeInDays;
+    if (days == null) return 'Unknown age';
+    final weeks = days ~/ 7;
+    if (weeks < 16) return '$weeks week${weeks == 1 ? '' : 's'}';
+    final months = (days / 30.44).floor();
+    if (months < 24) return '$months month${months == 1 ? '' : 's'}';
+    final years = months ~/ 12;
+    final rem = months % 12;
+    if (rem == 0) return '$years year${years == 1 ? '' : 's'}';
+    return '$years year${years == 1 ? '' : 's'} $rem month${rem == 1 ? '' : 's'}';
+  }
+
+  /// Age-and-gender-aware term: Pullet / Hen / Cockerel / Rooster / Chicken.
+  String get displayTerm {
+    if (gender == 'unknown') return 'Chicken';
+    final days = currentAgeInDays;
+    final isAdult = days == null || days >= 365;
+    if (gender == 'female') return isAdult ? 'Hen' : 'Pullet';
+    return isAdult ? 'Rooster' : 'Cockerel';
+  }
 
   Map<String, dynamic> toMap() {
     return {
@@ -43,6 +98,10 @@ class Chicken {
           eggSamplePhotos.isEmpty ? null : jsonEncode(eggSamplePhotos),
       'is_active': isActive ? 1 : 0,
       'flock_group_id': flockGroupId,
+      'gender': gender,
+      'acquired_via': acquiredVia,
+      'buy_date': buyDate?.toIso8601String(),
+      'age_at_purchase_weeks': ageAtPurchaseWeeks,
       'created_at': createdAt.toIso8601String(),
     };
   }
@@ -67,11 +126,18 @@ class Chicken {
       eggSamplePhotos: samplePhotos,
       isActive: (map['is_active'] as int) == 1,
       flockGroupId: map['flock_group_id'] as String?,
+      gender: map['gender'] as String? ?? 'unknown',
+      acquiredVia: map['acquired_via'] as String? ??
+          (map['hatch_date'] != null ? 'hatched' : 'hatched'),
+      buyDate: map['buy_date'] != null
+          ? DateTime.parse(map['buy_date'] as String)
+          : null,
+      ageAtPurchaseWeeks: map['age_at_purchase_weeks'] as int?,
       createdAt: DateTime.parse(map['created_at'] as String),
     );
   }
 
-  // Use a sentinel to allow explicitly clearing flockGroupId to null.
+  // Sentinel to allow explicitly clearing nullable fields to null.
   static const _clear = Object();
 
   Chicken copyWith({
@@ -86,6 +152,10 @@ class Chicken {
     List<String>? eggSamplePhotos,
     bool? isActive,
     Object? flockGroupId = _clear,
+    String? gender,
+    String? acquiredVia,
+    Object? buyDate = _clear,
+    Object? ageAtPurchaseWeeks = _clear,
     DateTime? createdAt,
   }) {
     return Chicken(
@@ -102,6 +172,14 @@ class Chicken {
       flockGroupId: identical(flockGroupId, _clear)
           ? this.flockGroupId
           : flockGroupId as String?,
+      gender: gender ?? this.gender,
+      acquiredVia: acquiredVia ?? this.acquiredVia,
+      buyDate: identical(buyDate, _clear)
+          ? this.buyDate
+          : buyDate as DateTime?,
+      ageAtPurchaseWeeks: identical(ageAtPurchaseWeeks, _clear)
+          ? this.ageAtPurchaseWeeks
+          : ageAtPurchaseWeeks as int?,
       createdAt: createdAt ?? this.createdAt,
     );
   }

@@ -23,7 +23,7 @@ class DatabaseHelper {
     final path = join(dbPath, 'chicken_journal.db');
     return openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -53,6 +53,10 @@ class DatabaseHelper {
         egg_sample_photos_json TEXT,
         is_active INTEGER NOT NULL DEFAULT 1,
         flock_group_id TEXT,
+        gender TEXT NOT NULL DEFAULT 'unknown',
+        acquired_via TEXT NOT NULL DEFAULT 'hatched',
+        buy_date TEXT,
+        age_at_purchase_weeks INTEGER,
         created_at TEXT NOT NULL,
         FOREIGN KEY (flock_group_id) REFERENCES flock_groups(id)
       )
@@ -128,6 +132,16 @@ class DatabaseHelper {
       ''');
       await db.execute(
           'ALTER TABLE chickens ADD COLUMN flock_group_id TEXT REFERENCES flock_groups(id)');
+    }
+    if (oldVersion < 3) {
+      await db.execute(
+          "ALTER TABLE chickens ADD COLUMN gender TEXT NOT NULL DEFAULT 'unknown'");
+      await db.execute(
+          "ALTER TABLE chickens ADD COLUMN acquired_via TEXT NOT NULL DEFAULT 'hatched'");
+      await db.execute(
+          'ALTER TABLE chickens ADD COLUMN buy_date TEXT');
+      await db.execute(
+          'ALTER TABLE chickens ADD COLUMN age_at_purchase_weeks INTEGER');
     }
   }
 

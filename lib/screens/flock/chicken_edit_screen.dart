@@ -31,6 +31,10 @@ class _ChickenEditScreenState extends State<ChickenEditScreen> {
   String? _photoPath;
   String? _eggColorCategory;
   String? _flockGroupId;
+  String _gender = 'unknown';
+  String _acquiredVia = 'hatched';
+  DateTime? _buyDate;
+  final _ageAtPurchaseController = TextEditingController();
   List<String> _samplePhotos = [];
   bool _isActive = true;
   bool _saving = false;
@@ -52,6 +56,11 @@ class _ChickenEditScreenState extends State<ChickenEditScreen> {
       _samplePhotos = List.from(c.eggSamplePhotos);
       _isActive = c.isActive;
       _flockGroupId = c.flockGroupId;
+      _gender = c.gender;
+      _acquiredVia = c.acquiredVia;
+      _buyDate = c.buyDate;
+      _ageAtPurchaseController.text =
+          c.ageAtPurchaseWeeks?.toString() ?? '';
     }
   }
 
@@ -61,6 +70,7 @@ class _ChickenEditScreenState extends State<ChickenEditScreen> {
     _breedController.dispose();
     _colorController.dispose();
     _notesController.dispose();
+    _ageAtPurchaseController.dispose();
     super.dispose();
   }
 
@@ -113,13 +123,16 @@ class _ChickenEditScreenState extends State<ChickenEditScreen> {
 
     final provider = context.read<ChickenProvider>();
 
+    final ageWeeks =
+        int.tryParse(_ageAtPurchaseController.text.trim());
+
     if (_isEditing) {
       final updated = widget.chicken!.copyWith(
         name: _nameController.text.trim(),
         breed: _breedController.text.trim().isNotEmpty
             ? _breedController.text.trim()
             : null,
-        hatchDate: _hatchDate,
+        hatchDate: _acquiredVia == 'hatched' ? _hatchDate : null,
         color: _colorController.text.trim().isNotEmpty
             ? _colorController.text.trim()
             : null,
@@ -131,6 +144,11 @@ class _ChickenEditScreenState extends State<ChickenEditScreen> {
         eggSamplePhotos: _samplePhotos,
         isActive: _isActive,
         flockGroupId: _flockGroupId,
+        gender: _gender,
+        acquiredVia: _acquiredVia,
+        buyDate: _acquiredVia == 'bought' ? _buyDate : null,
+        ageAtPurchaseWeeks:
+            _acquiredVia == 'bought' ? ageWeeks : null,
       );
       await provider.updateChicken(updated);
     } else {
@@ -139,7 +157,7 @@ class _ChickenEditScreenState extends State<ChickenEditScreen> {
         breed: _breedController.text.trim().isNotEmpty
             ? _breedController.text.trim()
             : null,
-        hatchDate: _hatchDate,
+        hatchDate: _acquiredVia == 'hatched' ? _hatchDate : null,
         color: _colorController.text.trim().isNotEmpty
             ? _colorController.text.trim()
             : null,
@@ -150,12 +168,54 @@ class _ChickenEditScreenState extends State<ChickenEditScreen> {
         eggColorCategory: _eggColorCategory,
         eggSamplePhotos: _samplePhotos,
         flockGroupId: _flockGroupId,
+        gender: _gender,
+        acquiredVia: _acquiredVia,
+        buyDate: _acquiredVia == 'bought' ? _buyDate : null,
+        ageAtPurchaseWeeks:
+            _acquiredVia == 'bought' ? ageWeeks : null,
       );
     }
 
     if (mounted) {
       Navigator.pop(context);
     }
+  }
+
+  Future<void> _createGroupInline(
+      BuildContext context, ChickenProvider provider) async {
+    final controller = TextEditingController();
+    final newGroup = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('New flock group'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: 'Group name',
+            hintText: 'e.g. Main Flock, Bantam Run',
+          ),
+          textCapitalization: TextCapitalization.words,
+          onSubmitted: (v) => Navigator.pop(ctx, v.trim()),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel')),
+          FilledButton(
+              onPressed: () =>
+                  Navigator.pop(ctx, controller.text.trim()),
+              child: const Text('Create')),
+        ],
+      ),
+    );
+
+    if (newGroup == null || newGroup.isEmpty) return;
+    final group = await provider.addFlockGroup(
+      name: newGroup,
+      colorHex: '#5D8A3C',
+    );
+    if (mounted) setState(() => _flockGroupId = group.id);
   }
 
   Future<void> _delete() async {
@@ -264,37 +324,56 @@ class _ChickenEditScreenState extends State<ChickenEditScreen> {
             Consumer<ChickenProvider>(
               builder: (context, provider, _) {
                 final groups = provider.flockGroups;
-                if (groups.isEmpty) return const SizedBox.shrink();
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    DropdownButtonFormField<String?>(
-                      value: _flockGroupId,
-                      decoration:
-                          const InputDecoration(labelText: 'Flock group'),
-                      items: [
-                        const DropdownMenuItem<String?>(
-                          value: null,
-                          child: Text('Ungrouped'),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: DropdownButtonFormField<String?>(
+                            value: _flockGroupId,
+                            decoration: const InputDecoration(
+                                labelText: 'Flock group'),
+                            items: [
+                              const DropdownMenuItem<String?>(
+                                value: null,
+                                child: Text('Ungrouped'),
+                              ),
+                              ...groups.map((g) {
+                                final hex =
+                                    g.colorHex.replaceAll('#', '');
+                                final color = Color(
+                                    int.parse('FF$hex', radix: 16));
+                                return DropdownMenuItem<String?>(
+                                  value: g.id,
+                                  child: Row(
+                                    children: [
+                                      CircleAvatar(
+                                          radius: 6,
+                                          backgroundColor: color),
+                                      const SizedBox(width: 8),
+                                      Text(g.name),
+                                    ],
+                                  ),
+                                );
+                              }),
+                            ],
+                            onChanged: (v) =>
+                                setState(() => _flockGroupId = v),
+                          ),
                         ),
-                        ...groups.map((g) {
-                          final hex = g.colorHex.replaceAll('#', '');
-                          final color =
-                              Color(int.parse('FF$hex', radix: 16));
-                          return DropdownMenuItem<String?>(
-                            value: g.id,
-                            child: Row(
-                              children: [
-                                CircleAvatar(
-                                    radius: 6, backgroundColor: color),
-                                const SizedBox(width: 8),
-                                Text(g.name),
-                              ],
-                            ),
-                          );
-                        }),
+                        const SizedBox(width: 8),
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: IconButton.filled(
+                            icon: const Icon(Icons.add, size: 20),
+                            tooltip: 'New group',
+                            onPressed: () =>
+                                _createGroupInline(context, provider),
+                          ),
+                        ),
                       ],
-                      onChanged: (v) => setState(() => _flockGroupId = v),
                     ),
                     const SizedBox(height: 12),
                   ],
@@ -302,24 +381,97 @@ class _ChickenEditScreenState extends State<ChickenEditScreen> {
               },
             ),
 
-            // Hatch date
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Hatch Date'),
-              subtitle: Text(_hatchDate != null
-                  ? DateFormat('d MMMM yyyy').format(_hatchDate!)
-                  : 'Not set'),
-              trailing: const Icon(Icons.calendar_today_outlined),
-              onTap: () async {
-                final picked = await showDatePicker(
-                  context: context,
-                  initialDate: _hatchDate ?? DateTime.now(),
-                  firstDate: DateTime(2000),
-                  lastDate: DateTime.now(),
-                );
-                if (picked != null) setState(() => _hatchDate = picked);
-              },
+            // Gender
+            Text('Gender',
+                style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: 8),
+            SegmentedButton<String>(
+              segments: const [
+                ButtonSegment(value: 'female', label: Text('Female')),
+                ButtonSegment(value: 'male', label: Text('Male')),
+                ButtonSegment(value: 'unknown', label: Text('Unknown')),
+              ],
+              selected: {_gender},
+              onSelectionChanged: (s) =>
+                  setState(() => _gender = s.first),
+              showSelectedIcon: false,
             ),
+            const SizedBox(height: 20),
+
+            // How acquired
+            Text('How did she join the flock?',
+                style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: 8),
+            SegmentedButton<String>(
+              segments: const [
+                ButtonSegment(
+                    value: 'hatched', label: Text('Hatched')),
+                ButtonSegment(value: 'bought', label: Text('Bought')),
+              ],
+              selected: {_acquiredVia},
+              onSelectionChanged: (s) =>
+                  setState(() => _acquiredVia = s.first),
+              showSelectedIcon: false,
+            ),
+            const SizedBox(height: 12),
+
+            if (_acquiredVia == 'hatched') ...[
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Hatch Date'),
+                subtitle: Text(_hatchDate != null
+                    ? DateFormat('d MMMM yyyy').format(_hatchDate!)
+                    : 'Not set'),
+                trailing: const Icon(Icons.calendar_today_outlined),
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: _hatchDate ?? DateTime.now(),
+                    firstDate: DateTime(2000),
+                    lastDate: DateTime.now(),
+                  );
+                  if (picked != null)
+                    setState(() => _hatchDate = picked);
+                },
+              ),
+            ] else ...[
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Date Bought'),
+                subtitle: Text(_buyDate != null
+                    ? DateFormat('d MMMM yyyy').format(_buyDate!)
+                    : 'Not set'),
+                trailing: const Icon(Icons.calendar_today_outlined),
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: _buyDate ?? DateTime.now(),
+                    firstDate: DateTime(2000),
+                    lastDate: DateTime.now(),
+                  );
+                  if (picked != null)
+                    setState(() => _buyDate = picked);
+                },
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _ageAtPurchaseController,
+                decoration: const InputDecoration(
+                  labelText: 'Age when bought (weeks)',
+                  hintText: 'e.g. 19',
+                ),
+                keyboardType: TextInputType.number,
+                validator: (v) {
+                  if (_acquiredVia != 'bought') return null;
+                  if (v != null &&
+                      v.trim().isNotEmpty &&
+                      int.tryParse(v.trim()) == null) {
+                    return 'Please enter a whole number';
+                  }
+                  return null;
+                },
+              ),
+            ],
             const Divider(),
             const SizedBox(height: 12),
 

@@ -48,7 +48,7 @@ class FlockScreen extends StatelessWidget {
                   const Icon(Icons.pets, size: 64, color: Colors.grey),
                   const SizedBox(height: 16),
                   const Text(
-                    'No hens yet — add your first girl!',
+                    'No birds yet — add your first one!',
                     style: TextStyle(color: Colors.grey),
                   ),
                   const SizedBox(height: 24),
@@ -245,7 +245,7 @@ class _GroupHeaderState extends State<_GroupHeader> {
             ),
             const SizedBox(width: 6),
             Text(
-              '$count ${count == 1 ? 'hen' : 'hens'}',
+              '$count ${count == 1 ? 'bird' : 'birds'}',
               style:
                   TextStyle(color: Colors.grey.shade500, fontSize: 12),
             ),
@@ -333,7 +333,7 @@ class _ManageGroupsSheet extends StatelessWidget {
                         radius: 10, backgroundColor: color),
                     title: Text(g.name),
                     subtitle: Text(
-                        '$count ${count == 1 ? 'hen' : 'hens'}'),
+                        '$count ${count == 1 ? 'bird' : 'birds'}'),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () {
                       Navigator.pop(context);
@@ -371,7 +371,8 @@ class _UngroupedSheetTile extends StatelessWidget {
     return ListTile(
       leading: CircleAvatar(radius: 10, backgroundColor: Colors.grey.shade400),
       title: const Text('Ungrouped'),
-      subtitle: Text('$count ${count == 1 ? 'hen' : 'hens'} · tap to name this group'),
+      subtitle: Text('$count ${count == 1 ? 'bird' : 'birds'} · tap to name this group'),
+
       trailing: const Icon(Icons.edit_outlined),
       onTap: () => _promptRename(context),
     );

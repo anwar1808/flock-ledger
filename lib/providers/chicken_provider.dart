@@ -38,6 +38,10 @@ class ChickenProvider extends ChangeNotifier {
     String? eggColorCategory,
     List<String> eggSamplePhotos = const [],
     String? flockGroupId,
+    String gender = 'unknown',
+    String acquiredVia = 'hatched',
+    DateTime? buyDate,
+    int? ageAtPurchaseWeeks,
   }) async {
     final chicken = Chicken(
       id: const Uuid().v4(),
@@ -50,6 +54,10 @@ class ChickenProvider extends ChangeNotifier {
       eggColorCategory: eggColorCategory,
       eggSamplePhotos: eggSamplePhotos,
       flockGroupId: flockGroupId,
+      gender: gender,
+      acquiredVia: acquiredVia,
+      buyDate: buyDate,
+      ageAtPurchaseWeeks: ageAtPurchaseWeeks,
       createdAt: DateTime.now(),
     );
     await DatabaseHelper.instance.insertChicken(chicken);

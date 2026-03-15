@@ -96,18 +96,34 @@ class _ChickenHeader extends StatelessWidget {
                           .textTheme
                           .headlineSmall
                           ?.copyWith(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 2),
+                  Text(
+                    chicken.displayTerm,
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13),
+                  ),
                   if (chicken.breed != null) ...[
                     const SizedBox(height: 4),
                     Text(chicken.breed!,
                         style: TextStyle(
                             color: Colors.grey.shade600, fontSize: 14)),
                   ],
-                  if (chicken.hatchDate != null) ...[
+                  if (chicken.estimatedHatchDate != null) ...[
                     const SizedBox(height: 4),
                     Text(
-                      'Hatched ${DateFormat('d MMM yyyy').format(chicken.hatchDate!)}',
-                      style:
-                          TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                      '${chicken.isApproximateAge ? '~' : ''}${chicken.ageDisplay} old'
+                      '${chicken.isApproximateAge ? ' (est.)' : ''}',
+                      style: TextStyle(
+                          color: Colors.grey.shade600, fontSize: 13),
+                    ),
+                    Text(
+                      chicken.acquiredVia == 'hatched'
+                          ? 'Hatched ${DateFormat('d MMM yyyy').format(chicken.estimatedHatchDate!)}'
+                          : 'Bought ${DateFormat('d MMM yyyy').format(chicken.buyDate!)}',
+                      style: TextStyle(
+                          color: Colors.grey.shade500, fontSize: 12),
                     ),
                   ],
                   if (chicken.eggColorCategory != null) ...[
@@ -156,12 +172,15 @@ class _EggStatsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (records.isEmpty) {
+      final isMale = chicken.gender == 'male';
       return Card(
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: const Text(
-            'No eggs recorded for this hen yet.',
-            style: TextStyle(color: Colors.grey),
+          child: Text(
+            isMale
+                ? 'No egg records — ${chicken.displayTerm.toLowerCase()}s don\'t lay!'
+                : 'No eggs recorded for this ${chicken.displayTerm.toLowerCase()} yet.',
+            style: const TextStyle(color: Colors.grey),
           ),
         ),
       );
