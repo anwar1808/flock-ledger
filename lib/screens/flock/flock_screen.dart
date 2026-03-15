@@ -305,12 +305,44 @@ class FlockScreen extends StatelessWidget {
   }
 
   void _confirmDeleteGroup(BuildContext context, FlockGroup group, int birdCount) {
+    final birdWord = birdCount == 1 ? 'bird' : 'birds';
+    // First confirmation
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete entire flock?'),
+        title: Text('Delete "${group.name}"?'),
         content: Text(
-            'This will permanently delete "${group.name}" and all $birdCount ${birdCount == 1 ? 'bird' : 'birds'} in it, including their egg records. This cannot be undone.'),
+            'You are about to delete this flock and $birdCount $birdWord inside it. '
+            'All egg records for these birds will also be removed.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(ctx).colorScheme.error),
+            onPressed: () {
+              Navigator.pop(ctx);
+              // Second confirmation
+              _finalConfirmDeleteGroup(context, group, birdCount);
+            },
+            child: const Text('Continue'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _finalConfirmDeleteGroup(BuildContext context, FlockGroup group, int birdCount) {
+    final birdWord = birdCount == 1 ? 'bird' : 'birds';
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Are you absolutely sure?'),
+        content: Text(
+            'This will permanently erase "${group.name}", all $birdCount $birdWord, '
+            'and every egg record linked to them.\n\n'
+            'There is no way to get this back.'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx),
@@ -328,7 +360,7 @@ class FlockScreen extends StatelessWidget {
                 eggProvider.removeRecordsForChicken(id);
               }
             },
-            child: const Text('Delete all'),
+            child: const Text('Yes, delete everything'),
           ),
         ],
       ),

@@ -5,6 +5,8 @@ import 'package:intl/intl.dart';
 import '../../providers/chicken_provider.dart';
 import '../../models/flock_group.dart';
 
+const _kCreate = '__create__';
+
 class BatchHatchScreen extends StatefulWidget {
   const BatchHatchScreen({super.key});
 
@@ -36,6 +38,87 @@ class _BatchHatchScreenState extends State<BatchHatchScreen> {
     final prefix = _prefixController.text.trim();
     if (prefix.isEmpty || _count <= 0) return [];
     return List.generate(_count, (i) => '$prefix ${i + 1}');
+  }
+
+  Future<void> _createNewFlock() async {
+    final nameController = TextEditingController();
+    String selectedColor = kFlockGroupColors.first;
+
+    final created = await showDialog<FlockGroup>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) => AlertDialog(
+          title: const Text('Create new flock'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextField(
+                controller: nameController,
+                autofocus: true,
+                textCapitalization: TextCapitalization.words,
+                decoration: const InputDecoration(
+                  labelText: 'Flock name',
+                  hintText: 'e.g. Main Flock',
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text('Colour', style: TextStyle(fontSize: 13)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                children: kFlockGroupColors.map((hex) {
+                  final color = Color(
+                      int.parse('FF${hex.replaceAll('#', '')}', radix: 16));
+                  final chosen = hex == selectedColor;
+                  return GestureDetector(
+                    onTap: () => setLocal(() => selectedColor = hex),
+                    child: Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: color,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: chosen ? Colors.black87 : Colors.transparent,
+                          width: 2.5,
+                        ),
+                      ),
+                      child: chosen
+                          ? const Icon(Icons.check,
+                              size: 14, color: Colors.white)
+                          : null,
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel')),
+            FilledButton(
+              onPressed: () async {
+                final name = nameController.text.trim();
+                if (name.isEmpty) return;
+                final group =
+                    await context.read<ChickenProvider>().addFlockGroup(
+                          name: name,
+                          colorHex: selectedColor,
+                        );
+                if (ctx.mounted) Navigator.pop(ctx, group);
+              },
+              child: const Text('Create'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (created != null && mounted) {
+      setState(() => _flockGroupId = created.id);
+    }
   }
 
   Future<void> _save() async {
@@ -154,11 +237,28 @@ class _BatchHatchScreenState extends State<BatchHatchScreen> {
               decoration:
                   const InputDecoration(labelText: 'Flock group (optional)'),
               items: [
+                DropdownMenuItem(
+                  value: _kCreate,
+                  child: Row(children: [
+                    const Icon(Icons.add, size: 16),
+                    const SizedBox(width: 6),
+                    Text('+ Create new flock',
+                        style: TextStyle(
+                            color: Theme.of(context).colorScheme.primary,
+                            fontWeight: FontWeight.w600)),
+                  ]),
+                ),
                 const DropdownMenuItem(value: null, child: Text('Ungrouped')),
                 ...groups.map((g) =>
                     DropdownMenuItem(value: g.id, child: Text(g.name))),
               ],
-              onChanged: (v) => setState(() => _flockGroupId = v),
+              onChanged: (v) {
+                if (v == _kCreate) {
+                  _createNewFlock();
+                } else {
+                  setState(() => _flockGroupId = v);
+                }
+              },
             ),
             const SizedBox(height: 24),
 
