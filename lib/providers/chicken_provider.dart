@@ -2,17 +2,22 @@ import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import '../models/chicken.dart';
 import '../models/flock_group.dart';
+import '../models/loss_event.dart';
 import '../database/database_helper.dart';
 
 class ChickenProvider extends ChangeNotifier {
   List<Chicken> _chickens = [];
   List<FlockGroup> _flockGroups = [];
+  List<LossEvent> _lossEvents = [];
   bool _loading = false;
 
   List<Chicken> get chickens => _chickens;
   List<FlockGroup> get flockGroups => _flockGroups;
+  List<LossEvent> get lossEvents => _lossEvents;
   List<Chicken> get activeChickens =>
-      _chickens.where((c) => c.isActive).toList();
+      _chickens.where((c) => c.status == 'active').toList();
+  List<Chicken> get archivedChickens =>
+      _chickens.where((c) => c.status != 'active').toList();
   bool get loading => _loading;
 
   Future<void> loadChickens() async {
@@ -20,6 +25,7 @@ class ChickenProvider extends ChangeNotifier {
     notifyListeners();
     _chickens = await DatabaseHelper.instance.getAllChickens();
     _flockGroups = await DatabaseHelper.instance.getAllFlockGroups();
+    _lossEvents = await DatabaseHelper.instance.getAllLossEvents();
     _loading = false;
     notifyListeners();
   }
@@ -167,6 +173,53 @@ class ChickenProvider extends ChangeNotifier {
     } catch (_) {
       return null;
     }
+  }
+
+  // ─────────────────────────────────────────
+  // LOSS EVENTS
+  // ─────────────────────────────────────────
+
+  /// Creates a loss event and updates each affected chicken's status.
+  Future<LossEvent> logLossEvent({
+    required String title,
+    required String statusApplied,
+    required DateTime date,
+    required List<String> affectedChickenIds,
+    String? notes,
+  }) async {
+    final event = LossEvent(
+      id: const Uuid().v4(),
+      title: title,
+      statusApplied: statusApplied,
+      date: date,
+      affectedChickenIds: affectedChickenIds,
+      notes: notes,
+      createdAt: DateTime.now(),
+    );
+    await DatabaseHelper.instance.insertLossEvent(event);
+    _lossEvents.insert(0, event);
+
+    // Update each affected chicken
+    for (final id in affectedChickenIds) {
+      final index = _chickens.indexWhere((c) => c.id == id);
+      if (index != -1) {
+        final updated = _chickens[index].copyWith(
+          status: statusApplied,
+          statusDate: date,
+          statusNote: title,
+        );
+        await DatabaseHelper.instance.updateChicken(updated);
+        _chickens[index] = updated;
+      }
+    }
+    notifyListeners();
+    return event;
+  }
+
+  Future<void> deleteLossEvent(String id) async {
+    await DatabaseHelper.instance.deleteLossEvent(id);
+    _lossEvents.removeWhere((e) => e.id == id);
+    notifyListeners();
   }
 
   /// Returns chickens belonging to the given group.

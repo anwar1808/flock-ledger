@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../providers/journal_provider.dart';
 import '../../models/chick_batch.dart';
+import 'chick_sexing_screen.dart';
 
 class ChickBatchScreen extends StatefulWidget {
   final String? batchId; // null → creating new
@@ -251,6 +252,21 @@ class _ChickBatchScreenState extends State<ChickBatchScreen> {
                       ),
                     ],
                   ),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+
+            // Sex my chicks button (shown when chicks are in raising/growing stage)
+            if (_isEditing &&
+                (_status == 'raising' || _status == 'growing')) ...[
+              OutlinedButton.icon(
+                icon: const Icon(Icons.search, size: 16),
+                label: const Text('Sex my chicks with Claude'),
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const ChickSexingScreen()),
                 ),
               ),
               const SizedBox(height: 16),

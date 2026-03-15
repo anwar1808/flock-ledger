@@ -36,7 +36,9 @@ class _ChickenEditScreenState extends State<ChickenEditScreen> {
   DateTime? _buyDate;
   final _ageAtPurchaseController = TextEditingController();
   List<String> _samplePhotos = [];
-  bool _isActive = true;
+  String _status = 'active';
+  DateTime? _statusDate;
+  final _statusNoteController = TextEditingController();
   bool _saving = false;
 
   bool get _isEditing => widget.chicken != null;
@@ -54,7 +56,9 @@ class _ChickenEditScreenState extends State<ChickenEditScreen> {
       _photoPath = c.photoPath;
       _eggColorCategory = c.eggColorCategory;
       _samplePhotos = List.from(c.eggSamplePhotos);
-      _isActive = c.isActive;
+      _status = c.status;
+      _statusDate = c.statusDate;
+      _statusNoteController.text = c.statusNote ?? '';
       _flockGroupId = c.flockGroupId;
       _gender = c.gender;
       _acquiredVia = c.acquiredVia;
@@ -71,6 +75,7 @@ class _ChickenEditScreenState extends State<ChickenEditScreen> {
     _colorController.dispose();
     _notesController.dispose();
     _ageAtPurchaseController.dispose();
+    _statusNoteController.dispose();
     super.dispose();
   }
 
@@ -142,7 +147,12 @@ class _ChickenEditScreenState extends State<ChickenEditScreen> {
         photoPath: _photoPath,
         eggColorCategory: _eggColorCategory,
         eggSamplePhotos: _samplePhotos,
-        isActive: _isActive,
+        status: _status,
+        statusDate: _status != 'active' ? _statusDate : null,
+        statusNote: _status != 'active' &&
+                _statusNoteController.text.trim().isNotEmpty
+            ? _statusNoteController.text.trim()
+            : null,
         flockGroupId: _flockGroupId,
         gender: _gender,
         acquiredVia: _acquiredVia,
@@ -610,16 +620,54 @@ class _ChickenEditScreenState extends State<ChickenEditScreen> {
             ),
             const SizedBox(height: 20),
 
-            // Active toggle (only when editing)
+            // Status (only when editing)
             if (_isEditing) ...[
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Active hen'),
-                subtitle: const Text(
-                    'Inactive hens still appear in egg records but not in auto-suggestions'),
-                value: _isActive,
-                onChanged: (v) => setState(() => _isActive = v),
+              DropdownButtonFormField<String>(
+                value: _status,
+                decoration: const InputDecoration(labelText: 'Status'),
+                items: const [
+                  DropdownMenuItem(value: 'active', child: Text('Active')),
+                  DropdownMenuItem(
+                      value: 'deceased', child: Text('Deceased')),
+                  DropdownMenuItem(
+                      value: 'missing', child: Text('Missing')),
+                  DropdownMenuItem(
+                      value: 'slaughtered', child: Text('Slaughtered')),
+                ],
+                onChanged: (v) =>
+                    setState(() => _status = v ?? 'active'),
               ),
+              if (_status != 'active') ...[
+                const SizedBox(height: 12),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Date'),
+                  subtitle: Text(_statusDate != null
+                      ? DateFormat('d MMMM yyyy').format(_statusDate!)
+                      : 'Not set'),
+                  trailing:
+                      const Icon(Icons.calendar_today_outlined),
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: _statusDate ?? DateTime.now(),
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime.now(),
+                    );
+                    if (picked != null)
+                      setState(() => _statusDate = picked);
+                  },
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _statusNoteController,
+                  decoration: const InputDecoration(
+                    labelText: 'Cause / note',
+                    hintText: 'e.g. Fox attack, Old age',
+                  ),
+                  textCapitalization: TextCapitalization.sentences,
+                ),
+              ],
               const SizedBox(height: 20),
             ],
 

@@ -9,6 +9,7 @@ import '../../models/flock_group.dart';
 import 'chicken_detail_screen.dart';
 import 'chicken_edit_screen.dart';
 import 'flock_group_edit_screen.dart';
+import 'loss_event_screen.dart';
 
 class FlockScreen extends StatelessWidget {
   const FlockScreen({super.key});
@@ -24,6 +25,13 @@ class FlockScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Flock'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.report_outlined),
+            tooltip: 'Log loss event',
+            onPressed: () => Navigator.push(context,
+                MaterialPageRoute(
+                    builder: (_) => const LossEventScreen())),
+          ),
           IconButton(
             icon: const Icon(Icons.folder_outlined),
             tooltip: 'Manage groups',
@@ -62,58 +70,61 @@ class FlockScreen extends StatelessWidget {
             );
           }
 
-          // Build sections: one per group, then ungrouped
+          // Build active sections: one per group, then ungrouped
           final sections = <_Section>[];
-
           for (final group in groups) {
-            final members = chickenProvider.chickensInGroup(group.id);
+            final members = chickenProvider
+                .chickensInGroup(group.id)
+                .where((c) => c.status == 'active')
+                .toList();
             if (members.isNotEmpty) {
               sections.add(_Section(group: group, chickens: members));
             }
           }
-
-          final ungrouped = chickenProvider.ungroupedChickens;
+          final ungrouped = chickenProvider.ungroupedChickens
+              .where((c) => c.status == 'active')
+              .toList();
           if (ungrouped.isNotEmpty) {
             sections.add(_Section(group: null, chickens: ungrouped));
           }
 
-          return ListView.builder(
+          final archived = chickenProvider.archivedChickens;
+
+          // Build flat list of widgets
+          final items = <Widget>[];
+          for (final section in sections) {
+            items.add(_GroupHeader(
+              section: section,
+              hexColor: section.group != null
+                  ? _hexColor(section.group!.colorHex)
+                  : Colors.grey.shade400,
+            ));
+            for (final chicken in section.chickens) {
+              items.add(_ChickenCard(
+                chicken: chicken,
+                eggsThisWeek:
+                    eggProvider.eggsThisWeek(chickenId: chicken.id),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) =>
+                          ChickenDetailScreen(chickenId: chicken.id)),
+                ),
+              ));
+            }
+          }
+
+          // Archived section
+          if (archived.isNotEmpty) {
+            items.add(_ArchivedSection(
+              birds: archived,
+              eggProvider: eggProvider,
+            ));
+          }
+
+          return ListView(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 88),
-            itemCount: sections.fold<int>(
-                0, (sum, s) => sum + 1 + s.chickens.length),
-            itemBuilder: (context, index) {
-              // Map flat index to section + item
-              int cursor = 0;
-              for (final section in sections) {
-                if (index == cursor) {
-                  // Section header
-                  return _GroupHeader(
-                    section: section,
-                    hexColor: section.group != null
-                        ? _hexColor(section.group!.colorHex)
-                        : Colors.grey.shade400,
-                  );
-                }
-                cursor++;
-                final localIndex = index - cursor;
-                if (localIndex < section.chickens.length) {
-                  final chicken = section.chickens[localIndex];
-                  return _ChickenCard(
-                    chicken: chicken,
-                    eggsThisWeek:
-                        eggProvider.eggsThisWeek(chickenId: chicken.id),
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (_) =>
-                              ChickenDetailScreen(chickenId: chicken.id)),
-                    ),
-                  );
-                }
-                cursor += section.chickens.length;
-              }
-              return const SizedBox.shrink();
-            },
+            children: items,
           );
         },
       ),
@@ -413,6 +424,114 @@ class _UngroupedSheetTile extends StatelessWidget {
     Navigator.pop(ctx); // close sheet
     await ctx.read<ChickenProvider>().nameUngroupedChickens(name: trimmed);
   }
+}
+
+// ─── Archived section ─────────────────────────────────────────────────────────
+
+class _ArchivedSection extends StatelessWidget {
+  final List<Chicken> birds;
+  final EggProvider eggProvider;
+
+  const _ArchivedSection({
+    required this.birds,
+    required this.eggProvider,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: ExpansionTile(
+        tilePadding: EdgeInsets.zero,
+        title: Text(
+          'Archived (${birds.length})',
+          style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+              color: Colors.grey),
+        ),
+        children: birds.map((bird) {
+          final statusLabel = switch (bird.status) {
+            'deceased' => 'Deceased',
+            'missing' => 'Missing',
+            'slaughtered' => 'Slaughtered',
+            _ => 'Archived',
+          };
+          final statusDate = bird.statusDate != null
+              ? ' · ${_fmtDate(bird.statusDate!)}'
+              : '';
+          return Opacity(
+            opacity: 0.6,
+            child: Card(
+              margin: const EdgeInsets.only(bottom: 8),
+              child: InkWell(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) =>
+                          ChickenDetailScreen(chickenId: bird.id)),
+                ),
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: bird.photoPath != null
+                            ? Image.file(
+                                File(bird.photoPath!),
+                                width: 48,
+                                height: 48,
+                                fit: BoxFit.cover,
+                              )
+                            : Container(
+                                width: 48,
+                                height: 48,
+                                color: Colors.grey.shade200,
+                                child: Icon(Icons.pets,
+                                    color: Colors.grey.shade400),
+                              ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(bird.name,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15)),
+                            if (bird.breed != null)
+                              Text(bird.breed!,
+                                  style: TextStyle(
+                                      color: Colors.grey.shade600,
+                                      fontSize: 12)),
+                            Text('$statusLabel$statusDate',
+                                style: const TextStyle(
+                                    color: Colors.grey, fontSize: 12)),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.chevron_right, color: Colors.grey),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  String _fmtDate(DateTime d) =>
+      '${d.day} ${_months[d.month - 1]} ${d.year}';
+
+  static const _months = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
 }
 
 // ─── Chicken card (unchanged visuals) ────────────────────────────────────────

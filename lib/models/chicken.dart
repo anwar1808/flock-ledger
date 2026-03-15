@@ -10,7 +10,10 @@ class Chicken {
   final String? photoPath;
   final String? eggColorCategory;
   final List<String> eggSamplePhotos;
-  final bool isActive;
+  /// 'active'|'deceased'|'missing'|'slaughtered'
+  final String status;
+  final DateTime? statusDate;
+  final String? statusNote;
   final String? flockGroupId;
   /// 'female' | 'male' | 'unknown'
   final String gender;
@@ -30,7 +33,9 @@ class Chicken {
     this.photoPath,
     this.eggColorCategory,
     this.eggSamplePhotos = const [],
-    this.isActive = true,
+    this.status = 'active',
+    this.statusDate,
+    this.statusNote,
     this.flockGroupId,
     this.gender = 'unknown',
     this.acquiredVia = 'hatched',
@@ -38,6 +43,9 @@ class Chicken {
     this.ageAtPurchaseWeeks,
     required this.createdAt,
   });
+
+  /// Convenience getter — true only when status is 'active'.
+  bool get isActive => status == 'active';
 
   // ─── Computed age ───────────────────────────────────────────────────────────
 
@@ -97,6 +105,9 @@ class Chicken {
       'egg_sample_photos_json':
           eggSamplePhotos.isEmpty ? null : jsonEncode(eggSamplePhotos),
       'is_active': isActive ? 1 : 0,
+      'status': status,
+      'status_date': statusDate?.toIso8601String(),
+      'status_note': statusNote,
       'flock_group_id': flockGroupId,
       'gender': gender,
       'acquired_via': acquiredVia,
@@ -124,7 +135,12 @@ class Chicken {
       photoPath: map['photo_path'] as String?,
       eggColorCategory: map['egg_color_category'] as String?,
       eggSamplePhotos: samplePhotos,
-      isActive: (map['is_active'] as int) == 1,
+      status: map['status'] as String? ??
+          ((map['is_active'] as int? ?? 1) == 1 ? 'active' : 'deceased'),
+      statusDate: map['status_date'] != null
+          ? DateTime.parse(map['status_date'] as String)
+          : null,
+      statusNote: map['status_note'] as String?,
       flockGroupId: map['flock_group_id'] as String?,
       gender: map['gender'] as String? ?? 'unknown',
       acquiredVia: map['acquired_via'] as String? ??
@@ -150,7 +166,9 @@ class Chicken {
     String? photoPath,
     String? eggColorCategory,
     List<String>? eggSamplePhotos,
-    bool? isActive,
+    String? status,
+    Object? statusDate = _clear,
+    Object? statusNote = _clear,
     Object? flockGroupId = _clear,
     String? gender,
     String? acquiredVia,
@@ -168,7 +186,13 @@ class Chicken {
       photoPath: photoPath ?? this.photoPath,
       eggColorCategory: eggColorCategory ?? this.eggColorCategory,
       eggSamplePhotos: eggSamplePhotos ?? this.eggSamplePhotos,
-      isActive: isActive ?? this.isActive,
+      status: status ?? this.status,
+      statusDate: identical(statusDate, _clear)
+          ? this.statusDate
+          : statusDate as DateTime?,
+      statusNote: identical(statusNote, _clear)
+          ? this.statusNote
+          : statusNote as String?,
       flockGroupId: identical(flockGroupId, _clear)
           ? this.flockGroupId
           : flockGroupId as String?,

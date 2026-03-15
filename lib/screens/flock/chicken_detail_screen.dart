@@ -9,6 +9,7 @@ import '../../models/chicken.dart';
 import '../../models/egg_record.dart';
 import '../../utils/egg_color_matcher.dart';
 import 'chicken_edit_screen.dart';
+import '../journal/chick_sexing_screen.dart';
 
 class ChickenDetailScreen extends StatelessWidget {
   final String chickenId;
@@ -46,6 +47,18 @@ class ChickenDetailScreen extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             children: [
               _ChickenHeader(chicken: chicken),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.search, size: 16),
+                label: const Text('Sex this bird with Claude'),
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        ChickSexingScreen(chickenId: chicken.id),
+                  ),
+                ),
+              ),
               const SizedBox(height: 16),
               _EggStatsCard(records: records, chicken: chicken),
               const SizedBox(height: 16),
@@ -104,6 +117,10 @@ class _ChickenHeader extends StatelessWidget {
                         fontWeight: FontWeight.w600,
                         fontSize: 13),
                   ),
+                  if (!chicken.isActive) ...[
+                    const SizedBox(height: 6),
+                    _StatusBadge(chicken: chicken),
+                  ],
                   if (chicken.breed != null) ...[
                     const SizedBox(height: 4),
                     Text(chicken.breed!,
@@ -159,6 +176,44 @@ class _ChickenHeader extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _StatusBadge extends StatelessWidget {
+  final Chicken chicken;
+  const _StatusBadge({required this.chicken});
+
+  @override
+  Widget build(BuildContext context) {
+    final label = switch (chicken.status) {
+      'deceased' => 'Deceased',
+      'missing' => 'Missing',
+      'slaughtered' => 'Slaughtered',
+      _ => chicken.status,
+    };
+    final color = switch (chicken.status) {
+      'deceased' => Colors.red.shade700,
+      'missing' => Colors.orange.shade700,
+      'slaughtered' => Colors.brown.shade600,
+      _ => Colors.grey,
+    };
+    final dateStr = chicken.statusDate != null
+        ? ' · ${DateFormat('d MMM yyyy').format(chicken.statusDate!)}'
+        : '';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Text(
+        '$label$dateStr',
+        style: TextStyle(
+            color: color, fontSize: 12, fontWeight: FontWeight.w600),
       ),
     );
   }

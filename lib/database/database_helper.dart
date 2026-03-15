@@ -3,6 +3,7 @@ import 'package:path/path.dart';
 
 import '../models/chicken.dart';
 import '../models/flock_group.dart';
+import '../models/loss_event.dart';
 import '../models/journal_entry.dart';
 import '../models/chick_batch.dart';
 import '../models/egg_record.dart';
@@ -23,7 +24,7 @@ class DatabaseHelper {
     final path = join(dbPath, 'chicken_journal.db');
     return openDatabase(
       path,
-      version: 3,
+      version: 4,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -57,8 +58,23 @@ class DatabaseHelper {
         acquired_via TEXT NOT NULL DEFAULT 'hatched',
         buy_date TEXT,
         age_at_purchase_weeks INTEGER,
+        status TEXT NOT NULL DEFAULT 'active',
+        status_date TEXT,
+        status_note TEXT,
         created_at TEXT NOT NULL,
         FOREIGN KEY (flock_group_id) REFERENCES flock_groups(id)
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE loss_events (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        status_applied TEXT NOT NULL,
+        date TEXT NOT NULL,
+        affected_chicken_ids_json TEXT NOT NULL,
+        notes TEXT,
+        created_at TEXT NOT NULL
       )
     ''');
 
@@ -143,6 +159,50 @@ class DatabaseHelper {
       await db.execute(
           'ALTER TABLE chickens ADD COLUMN age_at_purchase_weeks INTEGER');
     }
+    if (oldVersion < 4) {
+      await db.execute(
+          "ALTER TABLE chickens ADD COLUMN status TEXT NOT NULL DEFAULT 'active'");
+      await db.execute(
+          'ALTER TABLE chickens ADD COLUMN status_date TEXT');
+      await db.execute(
+          'ALTER TABLE chickens ADD COLUMN status_note TEXT');
+      // Carry over existing is_active=0 birds as deceased
+      await db.execute(
+          "UPDATE chickens SET status = 'deceased' WHERE is_active = 0");
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS loss_events (
+          id TEXT PRIMARY KEY,
+          title TEXT NOT NULL,
+          status_applied TEXT NOT NULL,
+          date TEXT NOT NULL,
+          affected_chicken_ids_json TEXT NOT NULL,
+          notes TEXT,
+          created_at TEXT NOT NULL
+        )
+      ''');
+    }
+  }
+
+  // ─────────────────────────────────────────
+  // LOSS EVENTS
+  // ─────────────────────────────────────────
+
+  Future<void> insertLossEvent(LossEvent event) async {
+    final db = await database;
+    await db.insert('loss_events', event.toMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<void> deleteLossEvent(String id) async {
+    final db = await database;
+    await db.delete('loss_events', where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<List<LossEvent>> getAllLossEvents() async {
+    final db = await database;
+    final maps =
+        await db.query('loss_events', orderBy: 'date DESC');
+    return maps.map(LossEvent.fromMap).toList();
   }
 
   // ─────────────────────────────────────────

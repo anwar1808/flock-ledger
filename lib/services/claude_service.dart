@@ -105,6 +105,119 @@ If you cannot read the scale clearly, set weight_grams to null.''',
       eggColorCategory: eggColor,
     );
   }
+
+  /// Sends one or more chick photos to Claude and returns a sex assessment.
+  Future<ChickSexResult> analyzeChickSex(
+    List<File> images, {
+    String? breed,
+    int? ageWeeks,
+  }) async {
+    final imageContents = <Map<String, dynamic>>[];
+    for (final image in images) {
+      final bytes = await image.readAsBytes();
+      final base64Image = base64Encode(bytes);
+      final ext = image.path.split('.').last.toLowerCase();
+      final mediaType = ext == 'png' ? 'image/png' : 'image/jpeg';
+      imageContents.add({
+        'type': 'image',
+        'source': {
+          'type': 'base64',
+          'media_type': mediaType,
+          'data': base64Image,
+        },
+      });
+    }
+
+    final breedNote = breed != null && breed.isNotEmpty
+        ? 'Breed: $breed. '
+        : '';
+    final ageNote = ageWeeks != null
+        ? 'Age: approximately $ageWeeks weeks old. '
+        : '';
+
+    imageContents.add({
+      'type': 'text',
+      'text': '''${breedNote}${ageNote}Please assess the sex of the chick(s) in these photos based on visual cues such as comb size and development, feather growth patterns, body shape, colouring, and wattle development.
+
+Return ONLY valid JSON (no other text):
+{
+  "likely_sex": "female",
+  "confidence": "medium",
+  "reasoning": "The comb is small and flat, feathering is even and rapid — both typical of pullets at this age.",
+  "caveats": "Silkies are notoriously difficult to sex before 4-5 months — treat this as a rough guide only."
+}
+
+Rules:
+- likely_sex must be exactly "female", "male", or "uncertain"
+- confidence must be exactly "high", "medium", or "low"
+- reasoning should be 1-3 sentences explaining the visual cues you used
+- caveats is optional — include breed-specific or age-specific warnings if relevant, otherwise omit it
+- If multiple chicks are shown, give the most common assessment across them and note variation in reasoning''',
+    });
+
+    final requestBody = {
+      'model': _model,
+      'max_tokens': 512,
+      'messages': [
+        {
+          'role': 'user',
+          'content': imageContents,
+        },
+      ],
+    };
+
+    final response = await http.post(
+      Uri.parse(_apiUrl),
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: jsonEncode(requestBody),
+    );
+
+    if (response.statusCode != 200) {
+      throw ClaudeServiceException(
+          'API returned ${response.statusCode}: ${response.body}');
+    }
+
+    final responseData =
+        jsonDecode(response.body) as Map<String, dynamic>;
+    final content = (responseData['content'] as List).first;
+    final text = (content as Map<String, dynamic>)['text'] as String;
+
+    final jsonMatch = RegExp(r'\{[\s\S]*\}').firstMatch(text);
+    if (jsonMatch == null) {
+      throw ClaudeServiceException(
+          'Could not parse JSON from Claude response: $text');
+    }
+
+    final parsed =
+        jsonDecode(jsonMatch.group(0)!) as Map<String, dynamic>;
+
+    return ChickSexResult(
+      likelySex: parsed['likely_sex'] as String? ?? 'uncertain',
+      confidence: parsed['confidence'] as String? ?? 'low',
+      reasoning: parsed['reasoning'] as String? ?? '',
+      caveats: parsed['caveats'] as String?,
+    );
+  }
+}
+
+class ChickSexResult {
+  /// 'female' | 'male' | 'uncertain'
+  final String likelySex;
+  /// 'high' | 'medium' | 'low'
+  final String confidence;
+  final String reasoning;
+  final String? caveats;
+
+  const ChickSexResult({
+    required this.likelySex,
+    required this.confidence,
+    required this.reasoning,
+    this.caveats,
+  });
 }
 
 class ClaudeServiceException implements Exception {
