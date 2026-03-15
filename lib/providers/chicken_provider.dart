@@ -222,6 +222,35 @@ class ChickenProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Creates multiple chickens from a single hatch, named "{prefix} 1", "{prefix} 2", …
+  Future<List<Chicken>> addHatchBatch({
+    required String prefix,
+    required int count,
+    required DateTime hatchDate,
+    String? breed,
+    String? flockGroupId,
+  }) async {
+    final created = <Chicken>[];
+    for (var i = 1; i <= count; i++) {
+      final chicken = Chicken(
+        id: const Uuid().v4(),
+        name: '$prefix $i',
+        breed: breed,
+        hatchDate: hatchDate,
+        flockGroupId: flockGroupId,
+        gender: 'unknown',
+        acquiredVia: 'hatched',
+        createdAt: DateTime.now(),
+      );
+      await DatabaseHelper.instance.insertChicken(chicken);
+      created.add(chicken);
+    }
+    _chickens.addAll(created);
+    _chickens.sort((a, b) => a.name.compareTo(b.name));
+    notifyListeners();
+    return created;
+  }
+
   /// Returns chickens belonging to the given group.
   List<Chicken> chickensInGroup(String groupId) =>
       _chickens.where((c) => c.flockGroupId == groupId).toList();

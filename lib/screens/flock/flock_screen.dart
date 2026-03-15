@@ -10,6 +10,7 @@ import 'chicken_detail_screen.dart';
 import 'chicken_edit_screen.dart';
 import 'flock_group_edit_screen.dart';
 import 'loss_event_screen.dart';
+import 'batch_hatch_screen.dart';
 import '../../widgets/hen_icon.dart';
 
 class FlockScreen extends StatelessWidget {
@@ -26,6 +27,13 @@ class FlockScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Flock'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.egg_outlined),
+            tooltip: 'Add from hatch',
+            onPressed: () => Navigator.push(context,
+                MaterialPageRoute(
+                    builder: (_) => const BatchHatchScreen())),
+          ),
           IconButton(
             icon: const Icon(Icons.report_outlined),
             tooltip: 'Log loss event',
