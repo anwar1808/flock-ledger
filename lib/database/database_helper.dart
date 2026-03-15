@@ -7,6 +7,7 @@ import '../models/loss_event.dart';
 import '../models/journal_entry.dart';
 import '../models/chick_batch.dart';
 import '../models/egg_record.dart';
+import '../models/sexing_assessment.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._internal();
@@ -24,7 +25,7 @@ class DatabaseHelper {
     final path = join(dbPath, 'chicken_journal.db');
     return openDatabase(
       path,
-      version: 4,
+      version: 5,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -125,6 +126,22 @@ class DatabaseHelper {
       )
     ''');
 
+    await db.execute('''
+      CREATE TABLE sexing_assessments (
+        id TEXT PRIMARY KEY,
+        chicken_id TEXT NOT NULL,
+        assessed_at TEXT NOT NULL,
+        age_weeks INTEGER,
+        claude_result TEXT NOT NULL,
+        claude_confidence TEXT NOT NULL,
+        claude_reasoning TEXT NOT NULL,
+        claude_caveats TEXT,
+        user_call TEXT,
+        displayed_gender TEXT NOT NULL,
+        FOREIGN KEY (chicken_id) REFERENCES chickens(id)
+      )
+    ''');
+
     // Indexes for common queries
     await db.execute(
         'CREATE INDEX idx_journal_date ON journal_entries(date DESC)');
@@ -133,6 +150,8 @@ class DatabaseHelper {
     await db.execute('CREATE INDEX idx_eggs_date ON egg_records(date DESC)');
     await db.execute(
         'CREATE INDEX idx_eggs_chicken ON egg_records(chicken_id)');
+    await db.execute(
+        'CREATE INDEX idx_sexing_chicken ON sexing_assessments(chicken_id)');
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -158,6 +177,25 @@ class DatabaseHelper {
           'ALTER TABLE chickens ADD COLUMN buy_date TEXT');
       await db.execute(
           'ALTER TABLE chickens ADD COLUMN age_at_purchase_weeks INTEGER');
+    }
+    if (oldVersion < 5) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS sexing_assessments (
+          id TEXT PRIMARY KEY,
+          chicken_id TEXT NOT NULL,
+          assessed_at TEXT NOT NULL,
+          age_weeks INTEGER,
+          claude_result TEXT NOT NULL,
+          claude_confidence TEXT NOT NULL,
+          claude_reasoning TEXT NOT NULL,
+          claude_caveats TEXT,
+          user_call TEXT,
+          displayed_gender TEXT NOT NULL,
+          FOREIGN KEY (chicken_id) REFERENCES chickens(id)
+        )
+      ''');
+      await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_sexing_chicken ON sexing_assessments(chicken_id)');
     }
     if (oldVersion < 4) {
       await db.execute(
@@ -260,17 +298,21 @@ class DatabaseHelper {
   Future<void> deleteChicken(String id) async {
     final db = await database;
     await db.delete('egg_records', where: 'chicken_id = ?', whereArgs: [id]);
+    await db.delete('sexing_assessments',
+        where: 'chicken_id = ?', whereArgs: [id]);
     await db.delete('chickens', where: 'id = ?', whereArgs: [id]);
   }
 
   Future<void> deleteChickensInGroup(String groupId) async {
     final db = await database;
-    // Get IDs first so we can delete their egg records
+    // Get IDs first so we can delete their egg records and sexing assessments
     final rows = await db.query('chickens',
         columns: ['id'], where: 'flock_group_id = ?', whereArgs: [groupId]);
     for (final row in rows) {
       final id = row['id'] as String;
       await db.delete('egg_records', where: 'chicken_id = ?', whereArgs: [id]);
+      await db.delete('sexing_assessments',
+          where: 'chicken_id = ?', whereArgs: [id]);
     }
     await db.delete('chickens',
         where: 'flock_group_id = ?', whereArgs: [groupId]);
@@ -505,6 +547,33 @@ class DatabaseHelper {
       GROUP BY month, chicken_id
       ORDER BY month ASC
     ''');
+  }
+
+  // ─────────────────────────────────────────
+  // SEXING ASSESSMENTS
+  // ─────────────────────────────────────────
+
+  Future<void> insertSexingAssessment(SexingAssessment assessment) async {
+    final db = await database;
+    await db.insert('sexing_assessments', assessment.toMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<void> deleteSexingAssessment(String id) async {
+    final db = await database;
+    await db.delete('sexing_assessments', where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<List<SexingAssessment>> getAssessmentsForChicken(
+      String chickenId) async {
+    final db = await database;
+    final maps = await db.query(
+      'sexing_assessments',
+      where: 'chicken_id = ?',
+      whereArgs: [chickenId],
+      orderBy: 'assessed_at DESC',
+    );
+    return maps.map(SexingAssessment.fromMap).toList();
   }
 
   /// Returns per-chicken egg count for the Flock tab badge.

@@ -227,26 +227,10 @@ class ChickSexResult {
 }
 
 /// Builds a breed context block for the sexing prompt.
-/// For known lines (e.g. JA87), injects documented characteristics so Claude
-/// doesn't have to guess and doesn't default to generic broiler assumptions.
 String _breedContext(String? breed) {
   if (breed == null || breed.isEmpty) return '';
-
-  final lower = breed.toLowerCase();
-  String extra = '';
-
-  if (lower.contains('ja87') || lower.contains('ja 87') ||
-      lower.contains('7a87') || lower.contains('7 a87')) {
-    extra = '''
-Two important corrections for this line:
-- JA87 is a slow-growth coloured parent stock line — NOT a fast-growing commercial broiler. Do not apply fast-broiler development expectations.
-- Do NOT use plumage colour as a sex indicator for JA87 or JA87-derived birds. Colour depends on the male cross and is not a reliable sex cue.
-
-''';
-  }
-
   return '''Breed context:
-The breed/line is "$breed". ${extra}Apply whatever you know about this specific breed or line — including growth rate profile, whether this line is known to carry sex-link feathering traits, typical comb development timeline, and any known plumage sex-link patterns. Use this knowledge to help interpret ambiguous visual cues only. Do not let breed assumptions override what is clearly visible in the photos. If you are uncertain about the characteristics of this specific line, say so in your caveats rather than guessing.
+The breed/line is "$breed". Apply whatever you know about this specific breed or line — including growth rate profile, whether this line is known to carry sex-link feathering traits, typical comb development timeline, and any known plumage sex-link patterns. Use this knowledge to help interpret ambiguous visual cues only. Do not let breed assumptions override what is clearly visible in the photos. If you are uncertain about the characteristics of this specific line, say so in your caveats rather than guessing.
 
 ''';
 }

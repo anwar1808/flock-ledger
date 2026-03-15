@@ -6,6 +6,7 @@ import 'database/database_helper.dart';
 import 'providers/chicken_provider.dart';
 import 'providers/journal_provider.dart';
 import 'providers/egg_provider.dart';
+import 'providers/sexing_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,6 +17,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => ChickenProvider()),
         ChangeNotifierProvider(create: (_) => JournalProvider()),
         ChangeNotifierProvider(create: (_) => EggProvider()),
+        ChangeNotifierProvider(create: (_) => SexingProvider()),
       ],
       child: const ChickenJournalApp(),
     ),

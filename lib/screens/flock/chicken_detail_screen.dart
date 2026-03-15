@@ -5,29 +5,45 @@ import 'dart:io';
 
 import '../../providers/chicken_provider.dart';
 import '../../providers/egg_provider.dart';
+import '../../providers/sexing_provider.dart';
 import '../../models/chicken.dart';
 import '../../models/egg_record.dart';
+import '../../models/sexing_assessment.dart';
 import '../../utils/egg_color_matcher.dart';
 import 'chicken_edit_screen.dart';
 import '../../widgets/hen_icon.dart';
 import '../journal/chick_sexing_screen.dart';
 
-class ChickenDetailScreen extends StatelessWidget {
+class ChickenDetailScreen extends StatefulWidget {
   final String chickenId;
   const ChickenDetailScreen({super.key, required this.chickenId});
 
   @override
+  State<ChickenDetailScreen> createState() => _ChickenDetailScreenState();
+}
+
+class _ChickenDetailScreenState extends State<ChickenDetailScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<SexingProvider>().loadForChicken(widget.chickenId);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Consumer2<ChickenProvider, EggProvider>(
-      builder: (context, chickenProvider, eggProvider, _) {
-        final chicken = chickenProvider.getById(chickenId);
+    return Consumer3<ChickenProvider, EggProvider, SexingProvider>(
+      builder: (context, chickenProvider, eggProvider, sexingProvider, _) {
+        final chicken = chickenProvider.getById(widget.chickenId);
         if (chicken == null) {
           return const Scaffold(
             body: Center(child: Text('Chicken not found')),
           );
         }
-        final records = eggProvider.recordsForChicken(chickenId);
+        final records = eggProvider.recordsForChicken(widget.chickenId);
         records.sort((a, b) => b.date.compareTo(a.date));
+        final assessments = sexingProvider.forChicken(widget.chickenId);
 
         return Scaffold(
           appBar: AppBar(
@@ -60,6 +76,13 @@ class ChickenDetailScreen extends StatelessWidget {
                   ),
                 ),
               ),
+              if (assessments.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                _SexingHistorySection(
+                  assessments: assessments,
+                  chickenId: widget.chickenId,
+                ),
+              ],
               const SizedBox(height: 16),
               _EggStatsCard(records: records, chicken: chicken),
               const SizedBox(height: 16),
@@ -377,6 +400,188 @@ class _EggRow extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ─── Sexing history ───────────────────────────────────────────────────────────
+
+class _SexingHistorySection extends StatelessWidget {
+  final List<SexingAssessment> assessments;
+  final String chickenId;
+
+  const _SexingHistorySection({
+    required this.assessments,
+    required this.chickenId,
+  });
+
+  String _genderLabel(String gender) => switch (gender) {
+        'female' => 'Female',
+        'male' => 'Male',
+        'probably_female' => 'Probably female',
+        'probably_male' => 'Probably male',
+        'uncertain' => 'Uncertain',
+        _ => 'Unknown',
+      };
+
+  Color _genderColor(String gender) => switch (gender) {
+        'female' || 'probably_female' => const Color(0xFFE91E8C),
+        'male' || 'probably_male' => const Color(0xFF4A90D9),
+        _ => Colors.grey,
+      };
+
+  String _genderIcon(String gender) => switch (gender) {
+        'female' || 'probably_female' => '♀',
+        'male' || 'probably_male' => '♂',
+        _ => '?',
+      };
+
+  Future<void> _confirmDelete(
+      BuildContext context, SexingAssessment a) async {
+    final confirmed = await showModalBottomSheet<bool>(
+      context: context,
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 16),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Text('Delete this sexing result?',
+                  style: TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.bold)),
+            ),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                'This will remove the record from the history. '
+                'The bird\'s current gender on the flock page won\'t change.',
+                style:
+                    TextStyle(color: Colors.grey.shade600, fontSize: 13),
+              ),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading:
+                  const Icon(Icons.delete_outline, color: Colors.red),
+              title: const Text('Delete result',
+                  style: TextStyle(color: Colors.red)),
+              onTap: () => Navigator.pop(context, true),
+            ),
+            ListTile(
+              leading: const Icon(Icons.close),
+              title: const Text('Cancel'),
+              onTap: () => Navigator.pop(context, false),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (confirmed == true && context.mounted) {
+      await context
+          .read<SexingProvider>()
+          .deleteAssessment(a.id, chickenId);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Sexing history',
+            style: Theme.of(context).textTheme.titleSmall),
+        const SizedBox(height: 8),
+        ...assessments.map((a) {
+          final date = DateFormat('d MMM yyyy').format(a.assessedAt);
+          final ageLabel =
+              a.ageWeeks != null ? ' · Week ${a.ageWeeks}' : '';
+          final claudeColor = _genderColor(a.claudeResult);
+          final displayedColor = _genderColor(a.displayedGender);
+          final userOverrode = a.userCall != null;
+
+          return GestureDetector(
+            onLongPress: () => _confirmDelete(context, a),
+            child: Card(
+              margin: const EdgeInsets.only(bottom: 8),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text('$date$ageLabel',
+                            style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade600)),
+                        const Spacer(),
+                        Text(
+                          '${_genderIcon(a.displayedGender)} ${_genderLabel(a.displayedGender)}',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: displayedColor,
+                              fontSize: 13),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: claudeColor.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            'Claude: ${_genderLabel(a.claudeResult)} · ${a.claudeConfidence}',
+                            style: TextStyle(
+                                fontSize: 11, color: claudeColor),
+                          ),
+                        ),
+                        if (userOverrode) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              'Your call: ${_genderLabel(a.userCall!)}',
+                              style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.grey.shade700),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }),
+        Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: Text('Long-press a result to delete it',
+              style: TextStyle(
+                  fontSize: 11, color: Colors.grey.shade400)),
+        ),
+      ],
     );
   }
 }

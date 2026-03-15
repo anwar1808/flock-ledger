@@ -3,7 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
+import 'package:uuid/uuid.dart';
 import '../../providers/chicken_provider.dart';
+import '../../providers/sexing_provider.dart';
+import '../../models/sexing_assessment.dart';
 import '../../screens/settings/settings_screen.dart';
 import '../../services/claude_service.dart';
 
@@ -118,15 +121,31 @@ class _ChickSexingScreenState extends State<ChickSexingScreen> {
 
   Future<void> _saveToProfile() async {
     if (widget.chickenId == null || _result == null) return;
-    final provider = context.read<ChickenProvider>();
-    final chicken = provider.getById(widget.chickenId!);
+    final chickenProvider = context.read<ChickenProvider>();
+    final sexingProvider = context.read<SexingProvider>();
+    final chicken = chickenProvider.getById(widget.chickenId!);
     if (chicken == null) return;
 
     final gender = _userGenderCall ??
         (_result!.likelySex == 'uncertain' ? 'unknown' : _result!.likelySex);
 
+    // Save assessment record
+    final assessment = SexingAssessment(
+      id: const Uuid().v4(),
+      chickenId: widget.chickenId!,
+      assessedAt: DateTime.now(),
+      ageWeeks: int.tryParse(_ageController.text.trim()),
+      claudeResult: _result!.likelySex,
+      claudeConfidence: _result!.confidence,
+      claudeReasoning: _result!.reasoning,
+      claudeCaveats: _result!.caveats,
+      userCall: _userGenderCall,
+      displayedGender: gender,
+    );
+    await sexingProvider.addAssessment(assessment);
+
     final selectedPhoto = _photos.isNotEmpty ? _photos[_thumbnailIndex] : null;
-    await provider.updateChicken(chicken.copyWith(
+    await chickenProvider.updateChicken(chicken.copyWith(
       gender: gender,
       photoPath: selectedPhoto?.path ?? chicken.photoPath,
     ));
@@ -344,9 +363,9 @@ class _ChickSexingScreenState extends State<ChickSexingScreen> {
             ),
           ],
 
-          // "Your call" override — shown when uncertain or low confidence
+          // "Your call" override — shown when medium or low confidence
           if (_result != null &&
-              (_result!.likelySex == 'uncertain' ||
+              (_result!.confidence == 'medium' ||
                   _result!.confidence == 'low')) ...[
             const SizedBox(height: 20),
             Container(
