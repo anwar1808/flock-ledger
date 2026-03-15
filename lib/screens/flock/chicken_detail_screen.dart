@@ -115,7 +115,9 @@ class _ChickenHeader extends StatelessWidget {
                           ?.copyWith(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 2),
                   Text(
-                    chicken.displayTerm,
+                    chicken.isProbableGender
+                        ? 'Probably ${chicken.displayTerm}'
+                        : chicken.displayTerm,
                     style: TextStyle(
                         color: Theme.of(context).colorScheme.primary,
                         fontWeight: FontWeight.w600,

@@ -15,7 +15,7 @@ class Chicken {
   final DateTime? statusDate;
   final String? statusNote;
   final String? flockGroupId;
-  /// 'female' | 'male' | 'unknown'
+  /// 'female' | 'male' | 'probably_female' | 'probably_male' | 'unknown'
   final String gender;
   /// 'hatched' | 'bought'
   final String acquiredVia;
@@ -83,12 +83,24 @@ class Chicken {
     return '$years year${years == 1 ? '' : 's'} $rem month${rem == 1 ? '' : 's'}';
   }
 
+  /// True when gender is a user "probably" guess rather than confirmed.
+  bool get isProbableGender =>
+      gender == 'probably_female' || gender == 'probably_male';
+
+  /// The base gender ignoring the "probably_" prefix.
+  String get resolvedGender {
+    if (gender == 'probably_female') return 'female';
+    if (gender == 'probably_male') return 'male';
+    return gender;
+  }
+
   /// Age-and-gender-aware term: Pullet / Hen / Cockerel / Rooster / Chicken.
   String get displayTerm {
-    if (gender == 'unknown') return 'Chicken';
+    final g = resolvedGender;
+    if (g == 'unknown') return 'Chicken';
     final days = currentAgeInDays;
     final isAdult = days == null || days >= 365;
-    if (gender == 'female') return isAdult ? 'Hen' : 'Pullet';
+    if (g == 'female') return isAdult ? 'Hen' : 'Pullet';
     return isAdult ? 'Rooster' : 'Cockerel';
   }
 

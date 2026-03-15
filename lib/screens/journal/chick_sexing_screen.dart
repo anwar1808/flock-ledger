@@ -27,6 +27,7 @@ class _ChickSexingScreenState extends State<ChickSexingScreen> {
   bool _analysing = false;
   String? _error;
   int _thumbnailIndex = 0;
+  String? _userGenderCall; // 'probably_female' | 'probably_male' | null
 
   @override
   void initState() {
@@ -95,6 +96,7 @@ class _ChickSexingScreenState extends State<ChickSexingScreen> {
       _result = null;
       _error = null;
       _thumbnailIndex = 0;
+      _userGenderCall = null;
     });
 
     try {
@@ -120,9 +122,8 @@ class _ChickSexingScreenState extends State<ChickSexingScreen> {
     final chicken = provider.getById(widget.chickenId!);
     if (chicken == null) return;
 
-    final gender = _result!.likelySex == 'uncertain'
-        ? 'unknown'
-        : _result!.likelySex;
+    final gender = _userGenderCall ??
+        (_result!.likelySex == 'uncertain' ? 'unknown' : _result!.likelySex);
 
     final selectedPhoto = _photos.isNotEmpty ? _photos[_thumbnailIndex] : null;
     await provider.updateChicken(chicken.copyWith(
@@ -130,10 +131,15 @@ class _ChickSexingScreenState extends State<ChickSexingScreen> {
       photoPath: selectedPhoto?.path ?? chicken.photoPath,
     ));
     if (mounted) {
+      final label = switch (gender) {
+        'probably_female' => 'probably female',
+        'probably_male' => 'probably male',
+        'unknown' => 'unknown',
+        _ => gender,
+      };
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-              'Saved — ${chicken.name} updated to ${gender == 'unknown' ? 'unknown' : gender}'),
+          content: Text('Saved — ${chicken.name} updated to $label'),
           backgroundColor: const Color(0xFF5D8A3C),
         ),
       );
@@ -338,6 +344,78 @@ class _ChickSexingScreenState extends State<ChickSexingScreen> {
             ),
           ],
 
+          // "Your call" override — shown when uncertain or low confidence
+          if (_result != null &&
+              (_result!.likelySex == 'uncertain' ||
+                  _result!.confidence == 'low')) ...[
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.amber.shade50,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.amber.shade200),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.help_outline,
+                          size: 16, color: Colors.amber.shade700),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Not confident — make your call',
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                            color: Colors.amber.shade900),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      _CallChip(
+                        label: 'Probably female',
+                        symbol: '♀',
+                        color: const Color(0xFFE91E8C),
+                        selected: _userGenderCall == 'probably_female',
+                        onTap: () => setState(() {
+                          _userGenderCall =
+                              _userGenderCall == 'probably_female'
+                                  ? null
+                                  : 'probably_female';
+                        }),
+                      ),
+                      const SizedBox(width: 10),
+                      _CallChip(
+                        label: 'Probably male',
+                        symbol: '♂',
+                        color: const Color(0xFF4A90D9),
+                        selected: _userGenderCall == 'probably_male',
+                        onTap: () => setState(() {
+                          _userGenderCall =
+                              _userGenderCall == 'probably_male'
+                                  ? null
+                                  : 'probably_male';
+                        }),
+                      ),
+                    ],
+                  ),
+                  if (_userGenderCall != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      'Your call will be saved instead of Claude\'s result.',
+                      style: TextStyle(
+                          fontSize: 11, color: Colors.amber.shade800),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+
           // Result
           if (_result != null) ...[
             const SizedBox(height: 24),
@@ -460,6 +538,67 @@ class _ResultCard extends StatelessWidget {
                 icon: const Icon(Icons.save_outlined, size: 16),
                 label: const Text('Save gender to profile'),
               ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Call chip ────────────────────────────────────────────────────────────────
+
+class _CallChip extends StatelessWidget {
+  final String label;
+  final String symbol;
+  final Color color;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _CallChip({
+    required this.label,
+    required this.symbol,
+    required this.color,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? color.withValues(alpha: 0.15) : Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: selected ? color : Colors.grey.shade300,
+            width: selected ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(symbol,
+                style: TextStyle(
+                    fontSize: 16,
+                    color: selected ? color : Colors.grey.shade500)),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontWeight:
+                    selected ? FontWeight.bold : FontWeight.normal,
+                color: selected ? color : Colors.grey.shade700,
+                fontSize: 13,
+              ),
+            ),
+            if (selected) ...[
+              const SizedBox(width: 6),
+              Icon(Icons.check_circle, size: 14, color: color),
             ],
           ],
         ),
