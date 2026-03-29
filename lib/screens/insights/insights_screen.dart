@@ -182,7 +182,7 @@ class _HatchSummaryCards extends StatelessWidget {
                 child: _StatCard(
               label: 'Total Clutches',
               value: totalBatches.toString(),
-              icon: Icons.layers_outlined,
+              icon: Icons.bubble_chart_outlined,
             )),
             const SizedBox(width: 12),
             Expanded(
@@ -200,7 +200,10 @@ class _HatchSummaryCards extends StatelessWidget {
                 child: _StatCard(
               label: 'Chicks Hatched',
               value: totalHatched.toString(),
-              icon: Icons.child_care_outlined,
+              iconWidget: HenIcon(
+                size: 20,
+                color: Theme.of(context).colorScheme.primary,
+              ),
             )),
             const SizedBox(width: 12),
             Expanded(
@@ -607,20 +610,30 @@ class _SummaryCards extends StatelessWidget {
 class _StatCard extends StatelessWidget {
   final String label;
   final String value;
-  final IconData icon;
+  /// Either [icon] or [iconWidget] must be provided.
+  final IconData? icon;
+  final Widget? iconWidget;
 
-  const _StatCard(
-      {required this.label, required this.value, required this.icon});
+  const _StatCard({
+    required this.label,
+    required this.value,
+    this.icon,
+    this.iconWidget,
+  }) : assert(icon != null || iconWidget != null);
 
   @override
   Widget build(BuildContext context) {
+    final color = Theme.of(context).colorScheme.primary;
+    final iconW = iconWidget ??
+        Icon(icon!, size: 20, color: color);
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, size: 20, color: Theme.of(context).colorScheme.primary),
+            SizedBox(width: 20, height: 20, child: iconW),
             const SizedBox(height: 8),
             Text(value,
                 style: Theme.of(context)

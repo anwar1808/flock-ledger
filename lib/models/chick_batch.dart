@@ -12,6 +12,10 @@ class ChickBatch {
   final int incubationDays;
   /// Extra days to wait past [expectedHatchDate] before giving up.
   final int hatchWindowDays;
+  /// Number of eggs placed into lockdown (after candling — often fewer than eggCount).
+  final int? eggsToLockdown;
+  /// The date the lockdown prompt was dismissed, to avoid re-showing it same day.
+  final DateTime? lockdownDismissedDate;
   final DateTime createdAt;
 
   const ChickBatch({
@@ -26,6 +30,8 @@ class ChickBatch {
     required this.status,
     this.incubationDays = 21,
     this.hatchWindowDays = 3,
+    this.eggsToLockdown,
+    this.lockdownDismissedDate,
     required this.createdAt,
   });
 
@@ -46,8 +52,37 @@ class ChickBatch {
     return days.clamp(0, totalTrackedDays);
   }
 
+  /// True if today is past the full hatch window.
+  bool get isOverdue =>
+      DateTime.now().difference(startDate).inDays > totalTrackedDays;
+
+  /// Lockdown day = incubationDays - 3.
+  DateTime get lockdownDate =>
+      startDate.add(Duration(days: incubationDays - 3));
+
+  /// True if today is lockdown day for this batch.
+  bool get isOnLockdownDay {
+    final ld = lockdownDate;
+    final now = DateTime.now();
+    return now.year == ld.year && now.month == ld.month && now.day == ld.day;
+  }
+
+  /// True if the lockdown prompt was already dismissed today.
+  bool get lockdownDismissedToday {
+    if (lockdownDismissedDate == null) return false;
+    final now = DateTime.now();
+    return now.year == lockdownDismissedDate!.year &&
+        now.month == lockdownDismissedDate!.month &&
+        now.day == lockdownDismissedDate!.day;
+  }
+
+  /// True when the home screen should show the lockdown action card.
+  bool get showLockdownPrompt =>
+      isOnLockdownDay && !lockdownDismissedToday && eggsToLockdown == null;
+
   /// Days remaining until expected hatch (0 if at or past expected date).
-  int get daysRemaining => (incubationDays - daysIncubated).clamp(0, incubationDays);
+  int get daysRemaining =>
+      (incubationDays - daysIncubated).clamp(0, incubationDays);
 
   /// Progress within the core incubation period as 0.0–1.0 (capped at 1.0).
   double get incubationProgress =>
@@ -75,6 +110,8 @@ class ChickBatch {
       'status': status,
       'incubation_days': incubationDays,
       'hatch_window_days': hatchWindowDays,
+      'eggs_to_lockdown': eggsToLockdown,
+      'lockdown_dismissed_date': lockdownDismissedDate?.toIso8601String(),
       'created_at': createdAt.toIso8601String(),
     };
   }
@@ -92,6 +129,10 @@ class ChickBatch {
       status: map['status'] as String,
       incubationDays: (map['incubation_days'] as int?) ?? 21,
       hatchWindowDays: (map['hatch_window_days'] as int?) ?? 3,
+      eggsToLockdown: map['eggs_to_lockdown'] as int?,
+      lockdownDismissedDate: map['lockdown_dismissed_date'] != null
+          ? DateTime.parse(map['lockdown_dismissed_date'] as String)
+          : null,
       createdAt: DateTime.parse(map['created_at'] as String),
     );
   }
@@ -108,6 +149,8 @@ class ChickBatch {
     String? status,
     int? incubationDays,
     int? hatchWindowDays,
+    int? eggsToLockdown,
+    DateTime? lockdownDismissedDate,
     DateTime? createdAt,
   }) {
     return ChickBatch(
@@ -122,6 +165,9 @@ class ChickBatch {
       status: status ?? this.status,
       incubationDays: incubationDays ?? this.incubationDays,
       hatchWindowDays: hatchWindowDays ?? this.hatchWindowDays,
+      eggsToLockdown: eggsToLockdown ?? this.eggsToLockdown,
+      lockdownDismissedDate:
+          lockdownDismissedDate ?? this.lockdownDismissedDate,
       createdAt: createdAt ?? this.createdAt,
     );
   }

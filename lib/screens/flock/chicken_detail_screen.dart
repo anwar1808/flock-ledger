@@ -99,6 +99,19 @@ class _ChickenHeader extends StatelessWidget {
   final Chicken chicken;
   const _ChickenHeader({required this.chicken});
 
+  void _openLightbox(BuildContext context) {
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        opaque: false,
+        barrierDismissible: true,
+        barrierColor: Colors.black87,
+        pageBuilder: (_, __, ___) =>
+            _PhotoLightbox(photoPath: chicken.photoPath!),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -107,24 +120,30 @@ class _ChickenHeader extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: chicken.photoPath != null
-                  ? Image.file(File(chicken.photoPath!),
-                      width: 80, height: 80, fit: BoxFit.cover)
-                  : Container(
-                      width: 80,
-                      height: 80,
-                      color: Theme.of(context).colorScheme.primaryContainer,
-                      child: Center(
-                        child: HenIcon(
-                          size: 48,
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onPrimaryContainer,
+            GestureDetector(
+              onTap: chicken.photoPath != null
+                  ? () => _openLightbox(context)
+                  : null,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: chicken.photoPath != null
+                    ? Image.file(File(chicken.photoPath!),
+                        width: 80, height: 80, fit: BoxFit.cover)
+                    : Container(
+                        width: 80,
+                        height: 80,
+                        color:
+                            Theme.of(context).colorScheme.primaryContainer,
+                        child: Center(
+                          child: HenIcon(
+                            size: 48,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onPrimaryContainer,
+                          ),
                         ),
                       ),
-                    ),
+              ),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -200,6 +219,24 @@ class _ChickenHeader extends StatelessWidget {
                         style: TextStyle(
                             color: Colors.grey.shade500, fontSize: 13)),
                   ],
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 6,
+                    children: [
+                      _InfoChip(chicken.purposeLabel),
+                      if (chicken.status == 'slaughtered' &&
+                          chicken.liveWeightGrams != null)
+                        _InfoChip(
+                            'Live: ${chicken.liveWeightGrams!.toStringAsFixed(0)}g'),
+                      if (chicken.status == 'slaughtered' &&
+                          chicken.dressedWeightGrams != null)
+                        _InfoChip(
+                            'Dressed: ${chicken.dressedWeightGrams!.toStringAsFixed(0)}g'),
+                      if (chicken.dressingPercentage != null)
+                        _InfoChip(
+                            '${chicken.dressingPercentage!.toStringAsFixed(0)}% dressing'),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -399,6 +436,57 @@ class _EggRow extends StatelessWidget {
                 style: const TextStyle(fontSize: 11)),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ─── Info chip ───────────────────────────────────────────────────────────────
+
+class _InfoChip extends StatelessWidget {
+  final String label;
+  const _InfoChip(this.label);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(label,
+          style: TextStyle(fontSize: 11, color: Colors.grey.shade700)),
+    );
+  }
+}
+
+// ─── Photo lightbox ───────────────────────────────────────────────────────────
+
+class _PhotoLightbox extends StatelessWidget {
+  final String photoPath;
+  const _PhotoLightbox({required this.photoPath});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => Navigator.pop(context),
+      onVerticalDragEnd: (details) {
+        if (details.primaryVelocity != null &&
+            details.primaryVelocity!.abs() > 200) {
+          Navigator.pop(context);
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Center(
+          child: Hero(
+            tag: photoPath,
+            child: InteractiveViewer(
+              child: Image.file(File(photoPath)),
+            ),
+          ),
+        ),
       ),
     );
   }

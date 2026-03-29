@@ -39,6 +39,9 @@ class _ChickenEditScreenState extends State<ChickenEditScreen> {
   String _status = 'active';
   DateTime? _statusDate;
   final _statusNoteController = TextEditingController();
+  String _purpose = 'layer';
+  final _liveWeightController = TextEditingController();
+  final _dressedWeightController = TextEditingController();
   bool _saving = false;
 
   bool get _isEditing => widget.chicken != null;
@@ -65,6 +68,11 @@ class _ChickenEditScreenState extends State<ChickenEditScreen> {
       _buyDate = c.buyDate;
       _ageAtPurchaseController.text =
           c.ageAtPurchaseWeeks?.toString() ?? '';
+      _purpose = c.purpose;
+      _liveWeightController.text =
+          c.liveWeightGrams?.toStringAsFixed(1) ?? '';
+      _dressedWeightController.text =
+          c.dressedWeightGrams?.toStringAsFixed(1) ?? '';
     }
   }
 
@@ -76,6 +84,8 @@ class _ChickenEditScreenState extends State<ChickenEditScreen> {
     _notesController.dispose();
     _ageAtPurchaseController.dispose();
     _statusNoteController.dispose();
+    _liveWeightController.dispose();
+    _dressedWeightController.dispose();
     super.dispose();
   }
 
@@ -131,6 +141,9 @@ class _ChickenEditScreenState extends State<ChickenEditScreen> {
     final ageWeeks =
         int.tryParse(_ageAtPurchaseController.text.trim());
 
+    final liveW = double.tryParse(_liveWeightController.text.trim());
+    final dressedW = double.tryParse(_dressedWeightController.text.trim());
+
     if (_isEditing) {
       final updated = widget.chicken!.copyWith(
         name: _nameController.text.trim(),
@@ -159,6 +172,9 @@ class _ChickenEditScreenState extends State<ChickenEditScreen> {
         buyDate: _acquiredVia == 'bought' ? _buyDate : null,
         ageAtPurchaseWeeks:
             _acquiredVia == 'bought' ? ageWeeks : null,
+        purpose: _purpose,
+        liveWeightGrams: liveW,
+        dressedWeightGrams: dressedW,
       );
       await provider.updateChicken(updated);
     } else {
@@ -183,6 +199,9 @@ class _ChickenEditScreenState extends State<ChickenEditScreen> {
         buyDate: _acquiredVia == 'bought' ? _buyDate : null,
         ageAtPurchaseWeeks:
             _acquiredVia == 'bought' ? ageWeeks : null,
+        purpose: _purpose,
+        liveWeightGrams: liveW,
+        dressedWeightGrams: dressedW,
       );
     }
 
@@ -278,8 +297,24 @@ class _ChickenEditScreenState extends State<ChickenEditScreen> {
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(16),
                   child: _photoPath != null
-                      ? Image.file(File(_photoPath!),
-                          width: 120, height: 120, fit: BoxFit.cover)
+                      ? Stack(
+                          children: [
+                            Image.file(File(_photoPath!),
+                                width: 120, height: 120, fit: BoxFit.cover),
+                            // Camera affordance overlay
+                            Positioned.fill(
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.28),
+                                ),
+                                child: const Center(
+                                  child: Icon(Icons.camera_alt_outlined,
+                                      size: 28, color: Colors.white),
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
                       : Container(
                           width: 120,
                           height: 120,
@@ -407,6 +442,25 @@ class _ChickenEditScreenState extends State<ChickenEditScreen> {
               showSelectedIcon: false,
             ),
             const SizedBox(height: 20),
+
+            const SizedBox(height: 20),
+
+            // Purpose
+            Text('Purpose',
+                style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: 8),
+            SegmentedButton<String>(
+              segments: const [
+                ButtonSegment(value: 'layer', label: Text('Layer')),
+                ButtonSegment(value: 'meat', label: Text('Meat')),
+                ButtonSegment(value: 'dual', label: Text('Dual Purpose')),
+              ],
+              selected: {_purpose},
+              onSelectionChanged: (s) =>
+                  setState(() => _purpose = s.first),
+              showSelectedIcon: false,
+            ),
+            const SizedBox(height: 4),
 
             // How acquired
             Text('How did she join the flock?',
@@ -667,6 +721,47 @@ class _ChickenEditScreenState extends State<ChickenEditScreen> {
                   ),
                   textCapitalization: TextCapitalization.sentences,
                 ),
+                // Slaughter weights — shown only when status is slaughtered
+                if (_status == 'slaughtered') ...[
+                  const SizedBox(height: 16),
+                  Text('Slaughter Weights (grams)',
+                      style: Theme.of(context).textTheme.titleSmall),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: _liveWeightController,
+                          decoration: const InputDecoration(
+                            labelText: 'Live weight (g)',
+                            hintText: 'e.g. 2800',
+                          ),
+                          keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextFormField(
+                          controller: _dressedWeightController,
+                          decoration: const InputDecoration(
+                            labelText: 'Dressed weight (g)',
+                            hintText: 'e.g. 2050',
+                          ),
+                          keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Dressed = plucked & eviscerated (oven-ready). '
+                    'App will calculate dressing %.',
+                    style: TextStyle(
+                        color: Colors.grey.shade600, fontSize: 12),
+                  ),
+                ],
               ],
               const SizedBox(height: 20),
             ],

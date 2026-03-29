@@ -21,6 +21,12 @@ class Chicken {
   final String acquiredVia;
   final DateTime? buyDate;
   final int? ageAtPurchaseWeeks;
+  /// 'layer' | 'meat' | 'dual'
+  final String purpose;
+  /// Live weight at slaughter in grams.
+  final double? liveWeightGrams;
+  /// Dressed (oven-ready) weight in grams.
+  final double? dressedWeightGrams;
   final DateTime createdAt;
 
   const Chicken({
@@ -41,11 +47,20 @@ class Chicken {
     this.acquiredVia = 'hatched',
     this.buyDate,
     this.ageAtPurchaseWeeks,
+    this.purpose = 'layer',
+    this.liveWeightGrams,
+    this.dressedWeightGrams,
     required this.createdAt,
   });
 
   /// Convenience getter — true only when status is 'active'.
   bool get isActive => status == 'active';
+
+  /// Dressing percentage (dressed ÷ live × 100), null if either weight missing.
+  double? get dressingPercentage {
+    if (liveWeightGrams == null || dressedWeightGrams == null) return null;
+    return dressedWeightGrams! / liveWeightGrams! * 100;
+  }
 
   // ─── Computed age ───────────────────────────────────────────────────────────
 
@@ -104,6 +119,13 @@ class Chicken {
     return isAdult ? 'Rooster' : 'Cockerel';
   }
 
+  /// Human-readable purpose label.
+  String get purposeLabel => switch (purpose) {
+        'meat' => 'Meat Bird',
+        'dual' => 'Dual Purpose',
+        _ => 'Layer',
+      };
+
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -125,6 +147,9 @@ class Chicken {
       'acquired_via': acquiredVia,
       'buy_date': buyDate?.toIso8601String(),
       'age_at_purchase_weeks': ageAtPurchaseWeeks,
+      'purpose': purpose,
+      'live_weight_grams': liveWeightGrams,
+      'dressed_weight_grams': dressedWeightGrams,
       'created_at': createdAt.toIso8601String(),
     };
   }
@@ -161,6 +186,9 @@ class Chicken {
           ? DateTime.parse(map['buy_date'] as String)
           : null,
       ageAtPurchaseWeeks: map['age_at_purchase_weeks'] as int?,
+      purpose: map['purpose'] as String? ?? 'layer',
+      liveWeightGrams: (map['live_weight_grams'] as num?)?.toDouble(),
+      dressedWeightGrams: (map['dressed_weight_grams'] as num?)?.toDouble(),
       createdAt: DateTime.parse(map['created_at'] as String),
     );
   }
@@ -186,6 +214,9 @@ class Chicken {
     String? acquiredVia,
     Object? buyDate = _clear,
     Object? ageAtPurchaseWeeks = _clear,
+    String? purpose,
+    Object? liveWeightGrams = _clear,
+    Object? dressedWeightGrams = _clear,
     DateTime? createdAt,
   }) {
     return Chicken(
@@ -216,6 +247,13 @@ class Chicken {
       ageAtPurchaseWeeks: identical(ageAtPurchaseWeeks, _clear)
           ? this.ageAtPurchaseWeeks
           : ageAtPurchaseWeeks as int?,
+      purpose: purpose ?? this.purpose,
+      liveWeightGrams: identical(liveWeightGrams, _clear)
+          ? this.liveWeightGrams
+          : liveWeightGrams as double?,
+      dressedWeightGrams: identical(dressedWeightGrams, _clear)
+          ? this.dressedWeightGrams
+          : dressedWeightGrams as double?,
       createdAt: createdAt ?? this.createdAt,
     );
   }

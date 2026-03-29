@@ -48,6 +48,9 @@ class ChickenProvider extends ChangeNotifier {
     String acquiredVia = 'hatched',
     DateTime? buyDate,
     int? ageAtPurchaseWeeks,
+    String purpose = 'layer',
+    double? liveWeightGrams,
+    double? dressedWeightGrams,
   }) async {
     final chicken = Chicken(
       id: const Uuid().v4(),
@@ -64,6 +67,9 @@ class ChickenProvider extends ChangeNotifier {
       acquiredVia: acquiredVia,
       buyDate: buyDate,
       ageAtPurchaseWeeks: ageAtPurchaseWeeks,
+      purpose: purpose,
+      liveWeightGrams: liveWeightGrams,
+      dressedWeightGrams: dressedWeightGrams,
       createdAt: DateTime.now(),
     );
     await DatabaseHelper.instance.insertChicken(chicken);

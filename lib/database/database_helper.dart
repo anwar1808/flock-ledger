@@ -25,7 +25,7 @@ class DatabaseHelper {
     final path = join(dbPath, 'chicken_journal.db');
     return openDatabase(
       path,
-      version: 6,
+      version: 7,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -62,6 +62,9 @@ class DatabaseHelper {
         status TEXT NOT NULL DEFAULT 'active',
         status_date TEXT,
         status_note TEXT,
+        purpose TEXT NOT NULL DEFAULT 'layer',
+        live_weight_grams REAL,
+        dressed_weight_grams REAL,
         created_at TEXT NOT NULL,
         FOREIGN KEY (flock_group_id) REFERENCES flock_groups(id)
       )
@@ -109,6 +112,8 @@ class DatabaseHelper {
         status TEXT NOT NULL DEFAULT 'incubating',
         incubation_days INTEGER NOT NULL DEFAULT 21,
         hatch_window_days INTEGER NOT NULL DEFAULT 3,
+        eggs_to_lockdown INTEGER,
+        lockdown_dismissed_date TEXT,
         created_at TEXT NOT NULL
       )
     ''');
@@ -226,6 +231,18 @@ class DatabaseHelper {
           'ALTER TABLE chick_batches ADD COLUMN incubation_days INTEGER NOT NULL DEFAULT 21');
       await db.execute(
           'ALTER TABLE chick_batches ADD COLUMN hatch_window_days INTEGER NOT NULL DEFAULT 3');
+    }
+    if (oldVersion < 7) {
+      await db.execute(
+          "ALTER TABLE chickens ADD COLUMN purpose TEXT NOT NULL DEFAULT 'layer'");
+      await db.execute(
+          'ALTER TABLE chickens ADD COLUMN live_weight_grams REAL');
+      await db.execute(
+          'ALTER TABLE chickens ADD COLUMN dressed_weight_grams REAL');
+      await db.execute(
+          'ALTER TABLE chick_batches ADD COLUMN eggs_to_lockdown INTEGER');
+      await db.execute(
+          'ALTER TABLE chick_batches ADD COLUMN lockdown_dismissed_date TEXT');
     }
   }
 

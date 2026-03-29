@@ -21,14 +21,13 @@ class EggRecord {
     required this.createdAt,
   });
 
-  /// USDA egg size grade based on weight.
+  /// UK/EU size grade (default — the active standard in display code).
+  /// Use EggGradeHelper.sizeGrade(weightGrams, standard) for explicit grading.
   String get sizeGrade {
-    if (weightGrams < 42) return 'Peewee';
-    if (weightGrams < 49) return 'Small';
-    if (weightGrams < 56) return 'Medium';
-    if (weightGrams < 63) return 'Large';
-    if (weightGrams < 70) return 'XL';
-    return 'Jumbo';
+    if (weightGrams < 53) return 'S';
+    if (weightGrams < 63) return 'M';
+    if (weightGrams < 73) return 'L';
+    return 'XL';
   }
 
   bool get isAssigned => chickenId != null;

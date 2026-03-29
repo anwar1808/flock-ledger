@@ -12,6 +12,7 @@ import 'flock_group_edit_screen.dart';
 import 'loss_event_screen.dart';
 import 'batch_hatch_screen.dart';
 import '../../widgets/hen_icon.dart';
+import '../../widgets/skull_icon.dart';
 
 class FlockScreen extends StatelessWidget {
   const FlockScreen({super.key});
@@ -28,14 +29,14 @@ class FlockScreen extends StatelessWidget {
         title: const Text('Flock'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.report_outlined),
+            icon: const SkullIcon(),
             tooltip: 'Log loss event',
             onPressed: () => Navigator.push(context,
                 MaterialPageRoute(
                     builder: (_) => const LossEventScreen())),
           ),
           IconButton(
-            icon: const Icon(Icons.folder_outlined),
+            icon: const HenIcon(),
             tooltip: 'Manage groups',
             onPressed: () => _manageGroups(context),
           ),

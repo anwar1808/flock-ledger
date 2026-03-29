@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:provider/provider.dart';
+import '../../providers/settings_provider.dart';
+import '../../utils/egg_grade_standard.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -177,6 +180,89 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ],
               ),
             ),
+          ),
+          const SizedBox(height: 16),
+
+          // ─── Egg Settings ───
+          Consumer<SettingsProvider>(
+            builder: (context, settings, _) {
+              return Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.egg_outlined, size: 20),
+                          const SizedBox(width: 8),
+                          Text('Egg Settings',
+                              style:
+                                  Theme.of(context).textTheme.titleMedium),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Grading standard
+                      Text('Size Grading Standard',
+                          style: Theme.of(context).textTheme.titleSmall),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Grades are computed from raw weights — '
+                        'switching standard re-grades all your data instantly.',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                      const SizedBox(height: 10),
+                      SegmentedButton<EggGradeStandard>(
+                        segments: EggGradeStandard.values
+                            .map((s) => ButtonSegment(
+                                  value: s,
+                                  label: Text(EggGradeHelper.standardName(s)),
+                                ))
+                            .toList(),
+                        selected: {settings.gradingStandard},
+                        onSelectionChanged: (s) =>
+                            settings.setGradingStandard(s.first),
+                        showSelectedIcon: false,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        settings.gradingStandard == EggGradeStandard.ukEu
+                            ? 'S <53 g · M 53–63 g · L 63–73 g · XL ≥73 g'
+                            : 'Peewee <42 g · Small 42–49 g · Med 49–56 g · '
+                                'Large 56–63 g · XL 63–70 g · Jumbo ≥70 g',
+                        style: TextStyle(
+                            color: Colors.grey.shade600, fontSize: 11),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Weight unit
+                      Text('Weight Unit',
+                          style: Theme.of(context).textTheme.titleSmall),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Raw weights are always stored in grams. '
+                        'Changing unit re-displays all values — no data is lost.',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                      const SizedBox(height: 10),
+                      SegmentedButton<WeightUnit>(
+                        segments: const [
+                          ButtonSegment(
+                              value: WeightUnit.grams, label: Text('g (grams)')),
+                          ButtonSegment(
+                              value: WeightUnit.oz, label: Text('oz (ounces)')),
+                        ],
+                        selected: {settings.weightUnit},
+                        onSelectionChanged: (s) =>
+                            settings.setWeightUnit(s.first),
+                        showSelectedIcon: false,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
           ),
           const SizedBox(height: 16),
 
