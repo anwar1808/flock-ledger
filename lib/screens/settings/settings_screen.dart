@@ -191,7 +191,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 8),
                   const Text(
-                      'ChickenJournal — a personal journal for raising chickens.\n\nEgg weights are read by Claude (claude-opus-4-6) with your own API key. Each photo costs a fraction of a cent.'),
+                      'FlockLedger — a personal app for raising and tracking your flock.\n\nEgg weights are read by Claude (claude-opus-4-6) with your own API key. Each photo costs a fraction of a cent.'),
                   const SizedBox(height: 8),
                   Text(
                     'Version 1.0.0',

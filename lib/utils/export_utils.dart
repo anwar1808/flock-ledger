@@ -37,14 +37,14 @@ Future<void> exportToExcel({
   // Save to a temporary file
   final dir = await getTemporaryDirectory();
   final filename =
-      'ChickenJournal_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}.xlsx';
+      'FlockLedger_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}.xlsx';
   final file = File('${dir.path}/$filename');
   await file.writeAsBytes(bytes, flush: true);
 
   // Share via the system share sheet
   await Share.shareXFiles(
     [XFile(file.path)],
-    subject: 'ChickenJournal Export — $filename',
+    subject: 'FlockLedger Export — $filename',
   );
 }
 

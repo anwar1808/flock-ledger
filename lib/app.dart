@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'screens/main_screen.dart';
 
-class ChickenJournalApp extends StatelessWidget {
-  const ChickenJournalApp({super.key});
+class FlockLedgerApp extends StatelessWidget {
+  const FlockLedgerApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'ChickenJournal',
+      title: 'FlockLedger',
       debugShowCheckedModeBanner: false,
       theme: _buildTheme(Brightness.light),
       darkTheme: _buildTheme(Brightness.dark),
@@ -28,7 +28,9 @@ class ChickenJournalApp extends StatelessWidget {
         seedColor: seedColor,
         secondary: accentAmber,
         brightness: brightness,
-      ),
+        // Remove yellow-green surface tint from Material 3.
+        // To restore the original tinted look, delete the line below.
+      ).copyWith(surfaceTint: Colors.transparent),
       appBarTheme: AppBarTheme(
         centerTitle: false,
         elevation: 0,

@@ -25,7 +25,7 @@ class DatabaseHelper {
     final path = join(dbPath, 'chicken_journal.db');
     return openDatabase(
       path,
-      version: 5,
+      version: 6,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -107,6 +107,8 @@ class DatabaseHelper {
         incubator_type TEXT,
         notes TEXT,
         status TEXT NOT NULL DEFAULT 'incubating',
+        incubation_days INTEGER NOT NULL DEFAULT 21,
+        hatch_window_days INTEGER NOT NULL DEFAULT 3,
         created_at TEXT NOT NULL
       )
     ''');
@@ -218,6 +220,12 @@ class DatabaseHelper {
           created_at TEXT NOT NULL
         )
       ''');
+    }
+    if (oldVersion < 6) {
+      await db.execute(
+          'ALTER TABLE chick_batches ADD COLUMN incubation_days INTEGER NOT NULL DEFAULT 21');
+      await db.execute(
+          'ALTER TABLE chick_batches ADD COLUMN hatch_window_days INTEGER NOT NULL DEFAULT 3');
     }
   }
 

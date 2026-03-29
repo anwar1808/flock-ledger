@@ -19,7 +19,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => EggProvider()),
         ChangeNotifierProvider(create: (_) => SexingProvider()),
       ],
-      child: const ChickenJournalApp(),
+      child: const FlockLedgerApp(),
     ),
   );
 }

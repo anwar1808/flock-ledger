@@ -97,6 +97,8 @@ class JournalProvider extends ChangeNotifier {
     required int eggCount,
     String? incubatorType,
     String? notes,
+    int incubationDays = 21,
+    int hatchWindowDays = 3,
   }) async {
     final batch = ChickBatch(
       id: const Uuid().v4(),
@@ -107,6 +109,8 @@ class JournalProvider extends ChangeNotifier {
       incubatorType: incubatorType,
       notes: notes,
       status: 'incubating',
+      incubationDays: incubationDays,
+      hatchWindowDays: hatchWindowDays,
       createdAt: DateTime.now(),
     );
     await DatabaseHelper.instance.insertChickBatch(batch);

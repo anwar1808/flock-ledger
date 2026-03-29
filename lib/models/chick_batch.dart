@@ -8,6 +8,10 @@ class ChickBatch {
   final String? incubatorType;
   final String? notes;
   final String status; // 'incubating', 'hatching', 'raising', 'growing', 'completed'
+  /// Standard incubation period for this breed (e.g. 21 for chickens, 28 for ducks).
+  final int incubationDays;
+  /// Extra days to wait past [expectedHatchDate] before giving up.
+  final int hatchWindowDays;
   final DateTime createdAt;
 
   const ChickBatch({
@@ -20,23 +24,39 @@ class ChickBatch {
     this.incubatorType,
     this.notes,
     required this.status,
+    this.incubationDays = 21,
+    this.hatchWindowDays = 3,
     required this.createdAt,
   });
 
-  /// Expected hatch date is 21 days after start.
-  DateTime get expectedHatchDate => startDate.add(const Duration(days: 21));
+  /// Expected hatch date based on breed incubation period.
+  DateTime get expectedHatchDate =>
+      startDate.add(Duration(days: incubationDays));
 
-  /// Days since incubation started (capped at 21).
+  /// Last date to wait before giving up — expected hatch + hatch window.
+  DateTime get lastHatchDate =>
+      startDate.add(Duration(days: incubationDays + hatchWindowDays));
+
+  /// Total tracked days (incubation + hatch window).
+  int get totalTrackedDays => incubationDays + hatchWindowDays;
+
+  /// Days since incubation started, capped at [totalTrackedDays].
   int get daysIncubated {
     final days = DateTime.now().difference(startDate).inDays;
-    return days.clamp(0, 21);
+    return days.clamp(0, totalTrackedDays);
   }
 
-  /// Days remaining until expected hatch (0 if past).
-  int get daysRemaining => (21 - daysIncubated).clamp(0, 21);
+  /// Days remaining until expected hatch (0 if at or past expected date).
+  int get daysRemaining => (incubationDays - daysIncubated).clamp(0, incubationDays);
 
-  /// Incubation progress as 0.0–1.0.
-  double get incubationProgress => daysIncubated / 21.0;
+  /// Progress within the core incubation period as 0.0–1.0 (capped at 1.0).
+  double get incubationProgress =>
+      (daysIncubated / incubationDays).clamp(0.0, 1.0);
+
+  /// True if we are past the expected hatch day but still within the window.
+  bool get isInHatchWindow =>
+      daysIncubated > incubationDays &&
+      daysIncubated <= incubationDays + hatchWindowDays;
 
   /// Hatch rate percentage (null if eggs_hatched not set).
   double? get hatchRate =>
@@ -53,6 +73,8 @@ class ChickBatch {
       'incubator_type': incubatorType,
       'notes': notes,
       'status': status,
+      'incubation_days': incubationDays,
+      'hatch_window_days': hatchWindowDays,
       'created_at': createdAt.toIso8601String(),
     };
   }
@@ -68,6 +90,8 @@ class ChickBatch {
       incubatorType: map['incubator_type'] as String?,
       notes: map['notes'] as String?,
       status: map['status'] as String,
+      incubationDays: (map['incubation_days'] as int?) ?? 21,
+      hatchWindowDays: (map['hatch_window_days'] as int?) ?? 3,
       createdAt: DateTime.parse(map['created_at'] as String),
     );
   }
@@ -82,6 +106,8 @@ class ChickBatch {
     String? incubatorType,
     String? notes,
     String? status,
+    int? incubationDays,
+    int? hatchWindowDays,
     DateTime? createdAt,
   }) {
     return ChickBatch(
@@ -94,6 +120,8 @@ class ChickBatch {
       incubatorType: incubatorType ?? this.incubatorType,
       notes: notes ?? this.notes,
       status: status ?? this.status,
+      incubationDays: incubationDays ?? this.incubationDays,
+      hatchWindowDays: hatchWindowDays ?? this.hatchWindowDays,
       createdAt: createdAt ?? this.createdAt,
     );
   }
