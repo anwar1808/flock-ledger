@@ -591,7 +591,10 @@ class _SummaryCards extends StatelessWidget {
                 child: _StatCard(
               label: 'Active Birds',
               value: chickens.where((c) => c.isActive).length.toString(),
-              icon: Icons.pets,
+              iconWidget: HenIcon(
+                size: 20,
+                color: Theme.of(context).colorScheme.primary,
+              ),
             )),
             const SizedBox(width: 12),
             Expanded(

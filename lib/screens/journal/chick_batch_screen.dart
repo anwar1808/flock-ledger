@@ -23,6 +23,7 @@ class _ChickBatchScreenState extends State<ChickBatchScreen> {
   final _breedController = TextEditingController();
   final _eggCountController = TextEditingController();
   final _eggsHatchedController = TextEditingController();
+  final _eggsToLockdownController = TextEditingController();
   final _incubatorController = TextEditingController();
   final _notesController = TextEditingController();
   final _breedFocusNode = FocusNode();
@@ -61,6 +62,7 @@ class _ChickBatchScreenState extends State<ChickBatchScreen> {
         _breedController.text = batch.breed ?? '';
         _eggCountController.text = batch.eggCount.toString();
         _eggsHatchedController.text = batch.eggsHatched?.toString() ?? '';
+        _eggsToLockdownController.text = batch.eggsToLockdown?.toString() ?? '';
         _incubatorController.text = batch.incubatorType ?? '';
         _notesController.text = batch.notes ?? '';
         _startDate = batch.startDate;
@@ -80,6 +82,7 @@ class _ChickBatchScreenState extends State<ChickBatchScreen> {
     _breedController.dispose();
     _eggCountController.dispose();
     _eggsHatchedController.dispose();
+    _eggsToLockdownController.dispose();
     _incubatorController.dispose();
     _notesController.dispose();
     _breedFocusNode.dispose();
@@ -111,6 +114,7 @@ class _ChickBatchScreenState extends State<ChickBatchScreen> {
     final provider = context.read<JournalProvider>();
     final eggCount = int.tryParse(_eggCountController.text.trim()) ?? 0;
     final eggsHatched = int.tryParse(_eggsHatchedController.text.trim());
+    final eggsToLockdown = int.tryParse(_eggsToLockdownController.text.trim());
 
     if (_isEditing) {
       final updated = _existingBatch!.copyWith(
@@ -121,6 +125,7 @@ class _ChickBatchScreenState extends State<ChickBatchScreen> {
         startDate: _startDate,
         eggCount: eggCount,
         eggsHatched: eggsHatched,
+        eggsToLockdown: eggsToLockdown,
         incubatorType: _incubatorController.text.trim().isNotEmpty
             ? _incubatorController.text.trim()
             : null,
@@ -417,6 +422,24 @@ class _ChickBatchScreenState extends State<ChickBatchScreen> {
               decoration: const InputDecoration(
                 labelText: 'Eggs hatched',
                 hintText: 'Fill in on hatch day',
+              ),
+              keyboardType: TextInputType.number,
+              validator: (v) {
+                if (v == null || v.trim().isEmpty) return null;
+                if (int.tryParse(v.trim()) == null) {
+                  return 'Please enter a whole number';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 12),
+
+            // ── Eggs to lockdown ──────────────────────────────────────────
+            TextFormField(
+              controller: _eggsToLockdownController,
+              decoration: const InputDecoration(
+                labelText: 'Eggs to lockdown',
+                hintText: 'After candling — often fewer than eggs set',
               ),
               keyboardType: TextInputType.number,
               validator: (v) {

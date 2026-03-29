@@ -17,7 +17,7 @@ class _LossEventScreenState extends State<LossEventScreen> {
   final _titleController = TextEditingController();
   final _notesController = TextEditingController();
 
-  String _statusApplied = 'deceased';
+  String _statusApplied = 'slaughtered';
   DateTime _date = DateTime.now();
   final Set<String> _selectedIds = {};
   bool _saving = false;
@@ -89,7 +89,7 @@ class _LossEventScreenState extends State<LossEventScreen> {
                 );
               }).toList(),
               onChanged: (v) =>
-                  setState(() => _statusApplied = v ?? 'deceased'),
+                  setState(() => _statusApplied = v ?? 'slaughtered'),
             ),
             const SizedBox(height: 8),
 

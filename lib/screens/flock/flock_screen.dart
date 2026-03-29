@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import 'dart:io';
 
 import '../../providers/chicken_provider.dart';
@@ -96,21 +97,46 @@ class FlockScreen extends StatelessWidget {
           // Build flat list of widgets
           final items = <Widget>[];
           for (final section in sections) {
-            items.add(_GroupHeader(
-              section: section,
-              hexColor: section.group != null
-                  ? _hexColor(section.group!.colorHex)
-                  : Colors.grey.shade400,
-              onLongPress: section.group != null
-                  ? () => _showGroupActions(
-                        context,
-                        section.group!,
-                        section.chickens.length,
-                      )
-                  : null,
-            ));
+            final sectionColor = section.group != null
+                ? _hexColor(section.group!.colorHex)
+                : Colors.grey.shade400;
+
+            items.add(
+              DragTarget<Chicken>(
+                onWillAcceptWithDetails: (details) =>
+                    details.data.flockGroupId != section.group?.id,
+                onAcceptWithDetails: (details) async {
+                  await chickenProvider.updateChicken(
+                    details.data.copyWith(flockGroupId: section.group?.id),
+                  );
+                },
+                builder: (ctx, candidateData, _) {
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    decoration: candidateData.isNotEmpty
+                        ? BoxDecoration(
+                            color: sectionColor.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          )
+                        : null,
+                    child: _GroupHeader(
+                      section: section,
+                      hexColor: sectionColor,
+                      onLongPress: section.group != null
+                          ? () => _showGroupActions(
+                                context,
+                                section.group!,
+                                section.chickens.length,
+                              )
+                          : null,
+                    ),
+                  );
+                },
+              ),
+            );
+
             for (final chicken in section.chickens) {
-              items.add(_ChickenCard(
+              final card = _ChickenCard(
                 chicken: chicken,
                 eggsThisWeek:
                     eggProvider.eggsThisWeek(chickenId: chicken.id),
@@ -122,7 +148,43 @@ class FlockScreen extends StatelessWidget {
                 ),
                 onLongPress: () =>
                     _showBirdActions(context, chicken),
-              ));
+              );
+              items.add(
+                LongPressDraggable<Chicken>(
+                  data: chicken,
+                  delay: const Duration(milliseconds: 350),
+                  onDragStarted: () {},
+                  feedback: Material(
+                    elevation: 8,
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surface,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          HenIcon(
+                              size: 22,
+                              color: Theme.of(context).colorScheme.primary),
+                          const SizedBox(width: 10),
+                          Text(
+                            chicken.name,
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 16),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  childWhenDragging:
+                      Opacity(opacity: 0.3, child: card),
+                  child: card,
+                ),
+              );
             }
           }
 
@@ -777,6 +839,65 @@ class _ChickenCard extends StatelessWidget {
     this.onLongPress,
   });
 
+  Widget _roastingWindowWidget(BuildContext context) {
+    final hatch = chicken.estimatedHatchDate;
+    if (hatch == null) {
+      return Text(
+        'Set hatch date\nfor prime window',
+        textAlign: TextAlign.end,
+        style: TextStyle(fontSize: 11, color: Colors.grey.shade400),
+      );
+    }
+    final breed = chicken.breed?.toLowerCase() ?? '';
+    final int minWeeks, maxWeeks;
+    if (breed.contains('cornish') ||
+        breed.contains('broiler') ||
+        breed.contains('ross')) {
+      minWeeks = 6;
+      maxWeeks = 8;
+    } else if (breed.contains('ranger') ||
+        breed.contains('freedom') ||
+        breed.contains('hybrid')) {
+      minWeeks = 9;
+      maxWeeks = 11;
+    } else {
+      minWeeks = 16;
+      maxWeeks = 20;
+    }
+    final start = hatch.add(Duration(days: minWeeks * 7));
+    final end = hatch.add(Duration(days: maxWeeks * 7));
+    final now = DateTime.now();
+    final inWindow = now.isAfter(start) && now.isBefore(end);
+    final isPast = now.isAfter(end);
+    final fmt = DateFormat('d MMM');
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          inWindow
+              ? 'In prime window'
+              : isPast
+                  ? 'Past prime window'
+                  : 'Prime window',
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: inWindow ? FontWeight.w600 : FontWeight.normal,
+            color: inWindow
+                ? const Color(0xFF5D8A3C)
+                : isPast
+                    ? Colors.grey.shade400
+                    : Colors.orange.shade700,
+          ),
+        ),
+        Text(
+          '${fmt.format(start)} – ${fmt.format(end)}',
+          style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -836,7 +957,9 @@ class _ChickenCard extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  if (eggsThisWeek > 0)
+                  if (chicken.purpose == 'meat')
+                    _roastingWindowWidget(context)
+                  else if (eggsThisWeek > 0)
                     Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 4),

@@ -213,33 +213,35 @@ class _EggRecordCard extends StatelessWidget {
                     style: const TextStyle(
                         fontWeight: FontWeight.bold, fontSize: 15),
                   ),
-                  Container(
-                    margin: const EdgeInsets.only(top: 4),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(record.sizeGrade,
-                        style: const TextStyle(fontSize: 11)),
-                  ),
-                  // Egg colour swatch
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Container(
-                      width: 12,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color:
-                            eggColorSwatch(record.eggColorCategory),
-                        border: Border.all(
-                            color: Colors.grey.shade300, width: 1),
+                  const SizedBox(height: 4),
+                  // Colour dot + size grade on same line
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 12,
+                        height: 12,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: eggColorSwatch(record.eggColorCategory),
+                          border: Border.all(
+                              color: Colors.grey.shade300, width: 1),
+                        ),
                       ),
-                    ),
+                      const SizedBox(width: 5),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(record.sizeGrade,
+                            style: const TextStyle(fontSize: 11)),
+                      ),
+                    ],
                   ),
                 ],
               ),

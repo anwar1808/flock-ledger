@@ -42,10 +42,10 @@ class LossEvent {
       );
 }
 
-const kLossStatuses = ['deceased', 'missing', 'slaughtered'];
+const kLossStatuses = ['slaughtered', 'deceased', 'missing'];
 
 const kLossStatusLabels = {
+  'slaughtered': 'Slaughtered',
   'deceased': 'Deceased',
   'missing': 'Missing',
-  'slaughtered': 'Slaughtered',
 };
