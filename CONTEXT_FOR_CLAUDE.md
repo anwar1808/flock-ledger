@@ -1,18 +1,18 @@
 # FlockLedger — Full Project Context
 
 > Feed this file to Claude.ai to continue work on the app with full context.
-> Current date captured: 2026-03-29 | Current version: **1.7.0+22**
+> Current date captured: 2026-03-29 | Current version: **1.8.1+24**
 > GitHub: https://github.com/anwar1808/flock-ledger
 
 ---
 
 ## What this app is
 
-**FlockLedger** (formerly FlockLedger) is a personal Android app (Flutter) for tracking a backyard chicken flock. It records:
+**FlockLedger** is a personal Android app (Flutter) for tracking a backyard chicken flock. It records:
 - General / flock / chick journal entries
 - Egg records (weight, colour, hen, photo) — weights read automatically from scale photos via Claude Vision AI
-- Flock management (individual birds, groups, status tracking)
-- Chick batches (incubation tracking with 21-day progress bar)
+- Flock management (individual birds, groups, status tracking, purpose: layer/meat/dual)
+- Chick batches (incubation tracking with breed-aware progress bar and hatch window)
 - AI-powered chick sexing assessments via Claude Vision
 - Export to Excel
 
@@ -26,17 +26,17 @@ All data is local (SQLite on-device). Only compressed photos are ever sent exter
 |---|---|
 | Framework | Flutter (Dart), targets Android |
 | State management | `provider` ^6.1.2 — `ChangeNotifier` pattern |
-| Local DB | `sqflite` ^2.3.3, schema version 5 |
+| Local DB | `sqflite` ^2.3.3, schema version **7** |
 | AI | Anthropic Claude API (`claude-opus-4-6`) via `http` ^1.2.0 |
 | Charts | `fl_chart` ^0.68.0 |
 | Export | `excel` ^4.0.3 + `share_plus` ^9.0.0 |
 | Image | `image_picker` ^1.0.7, `flutter_image_compress` ^2.3.0 |
 | EXIF | `exif` ^3.3.0 (date extraction from photo filenames) |
-| Secure storage | `flutter_secure_storage` ^9.0.0 (API key) |
+| Secure storage | `flutter_secure_storage` ^9.0.0 (API key + settings) |
 | IDs | `uuid` ^4.3.3 |
 | Localisation | `intl` ^0.19.0 |
 
-**pubspec version:** `1.7.0+22`
+**pubspec version:** `1.8.1+24`
 
 ---
 
@@ -47,59 +47,65 @@ lib/
 ├── main.dart                    # Entry point; initialises DB, sets up providers
 ├── app.dart                     # MaterialApp, theme (earthy green #5D8A3C + amber #D4A017)
 ├── database/
-│   └── database_helper.dart     # Singleton DB; all CRUD; schema v5
+│   └── database_helper.dart     # Singleton DB; all CRUD; schema v7
 ├── models/
-│   ├── chicken.dart             # Chicken model + egg colour constants
-│   ├── egg_record.dart          # EggRecord model + USDA size grades
+│   ├── chicken.dart             # Chicken model (inc. purpose, liveWeightGrams, dressedWeightGrams)
+│   ├── egg_record.dart          # EggRecord model; sizeGrade uses active grading standard
 │   ├── journal_entry.dart       # JournalEntry model + track/stage constants
-│   ├── chick_batch.dart         # ChickBatch model + incubation maths
+│   ├── chick_batch.dart         # ChickBatch model + incubation maths + lockdown fields
 │   ├── flock_group.dart         # FlockGroup model + colour presets
-│   ├── loss_event.dart          # LossEvent model
+│   ├── loss_event.dart          # LossEvent model; kLossStatuses order: slaughtered → deceased → missing
 │   └── sexing_assessment.dart   # SexingAssessment model (AI chick sexing)
 ├── providers/
 │   ├── chicken_provider.dart    # Chickens, flock groups, loss events
 │   ├── egg_provider.dart        # Egg records + stats
 │   ├── journal_provider.dart    # Journal entries + chick batches
+│   ├── settings_provider.dart   # EggGradeStandard + WeightUnit; persisted in secure storage
 │   └── sexing_provider.dart     # Sexing assessments (lazy-loaded per bird)
 ├── services/
 │   └── claude_service.dart      # Anthropic API calls (egg analysis + sexing)
 ├── screens/
 │   ├── main_screen.dart         # Bottom nav: Home / Eggs / Flock / Insights
 │   ├── home/
-│   │   └── home_screen.dart     # Dashboard / Journal tab
+│   │   └── home_screen.dart     # Dashboard; dynamic greeting + lockdown prompt + incubation cards
 │   ├── eggs/
-│   │   ├── egg_tracker_screen.dart   # Egg list + export button
+│   │   ├── egg_tracker_screen.dart   # Egg list; colour dot + size grade on same line
 │   │   ├── egg_capture_screen.dart   # Photo → Claude → review/edit → save
 │   │   └── egg_stats_screen.dart     # Charts (weekly/monthly production, weight trends)
 │   ├── flock/
-│   │   ├── flock_screen.dart         # Bird list grouped by flock group
-│   │   ├── chicken_detail_screen.dart # Per-bird stats, egg history, sexing history
-│   │   ├── chicken_edit_screen.dart   # Add/edit a bird
-│   │   ├── flock_group_edit_screen.dart # Add/edit a group
+│   │   ├── flock_screen.dart         # Bird list with drag-and-drop between groups
+│   │   ├── chicken_detail_screen.dart # Per-bird stats, photo lightbox, slaughter weights
+│   │   ├── chicken_edit_screen.dart   # Add/edit a bird; purpose, slaughter weights, camera overlay
+│   │   ├── flock_group_edit_screen.dart
 │   │   ├── batch_hatch_screen.dart    # Add multiple birds from a hatch
-│   │   └── loss_event_screen.dart     # Log a loss/death/missing event
+│   │   └── loss_event_screen.dart     # Log loss; default Slaughtered; order S→D→M
 │   ├── journal/
 │   │   ├── journal_screen.dart        # Tab bar: General / Flock / Chick
-│   │   ├── entry_list_screen.dart     # Scrollable entry list per track
-│   │   ├── entry_edit_screen.dart     # Add/edit a journal entry
-│   │   ├── chick_batch_screen.dart    # Batch detail + 21-day progress
-│   │   └── chick_sexing_screen.dart   # Upload photos → Claude sex assessment
+│   │   ├── entry_list_screen.dart
+│   │   ├── entry_edit_screen.dart
+│   │   ├── chick_batch_screen.dart    # Batch detail + dynamic progress bar + eggsToLockdown field
+│   │   └── chick_sexing_screen.dart
 │   ├── insights/
-│   │   └── insights_screen.dart       # Overview stats dashboard
+│   │   └── insights_screen.dart       # Stats dashboard; _StatCard accepts icon or iconWidget
 │   └── settings/
-│       └── settings_screen.dart       # API key management
+│       └── settings_screen.dart       # API key + egg grading standard + weight unit
 ├── utils/
-│   ├── date_parser.dart         # Extract date from image filename (IMG_YYYYMMDD…)
-│   ├── egg_color_matcher.dart   # Match egg colour category to a hen
-│   └── export_utils.dart        # Build and share Excel file
+│   ├── breed_incubation_table.dart  # Local breed→incubation lookup (~80 breeds) + AI fallback
+│   ├── date_parser.dart
+│   ├── egg_color_matcher.dart
+│   ├── egg_grade_standard.dart      # EggGradeStandard enum (ukEu, usda) + EggGradeHelper
+│   └── export_utils.dart
 └── widgets/
-    ├── hen_icon.dart             # Custom SVG-like hen icon widget
-    └── coop_icon.dart            # Custom coop icon widget
+    ├── hen_icon.dart             # Custom CustomPainter hen silhouette
+    ├── skull_icon.dart           # Custom CustomPainter skull (for loss event button)
+    └── coop_icon.dart
 ```
 
 ---
 
-## Database schema (v5)
+## Database schema (v7)
+
+> **Schema history:** v1→v2→v3→v4→v5 (legacy) → v6 (added incubation_days, hatch_window_days to chick_batches) → v7 (added purpose, live_weight_grams, dressed_weight_grams to chickens; added eggs_to_lockdown, lockdown_dismissed_date to chick_batches)
 
 ### `flock_groups`
 | Column | Type | Notes |
@@ -126,25 +132,30 @@ lib/
 | status | TEXT | `active` / `deceased` / `missing` / `slaughtered` |
 | status_date | TEXT | nullable |
 | status_note | TEXT | nullable |
-| flock_group_id | TEXT | FK → flock_groups |
+| flock_group_id | TEXT | FK → flock_groups, nullable |
 | gender | TEXT | `female` / `male` / `probably_female` / `probably_male` / `unknown` |
 | acquired_via | TEXT | `hatched` / `bought` |
 | buy_date | TEXT | nullable |
 | age_at_purchase_weeks | INTEGER | nullable |
+| purpose | TEXT | `layer` (default) / `meat` / `dual` |
+| live_weight_grams | REAL | nullable — live weight at slaughter |
+| dressed_weight_grams | REAL | nullable — oven-ready weight |
 | created_at | TEXT | |
 
 **Computed getters on `Chicken` model:**
-- `estimatedHatchDate` — back-calculates for bought birds
+- `estimatedHatchDate` — back-calculates for bought birds from buyDate + ageAtPurchaseWeeks
 - `currentAgeInDays`, `ageDisplay` — "9 weeks", "7 months", "2 years 3 months"
 - `displayTerm` — Pullet / Hen / Cockerel / Rooster / Chicken (age + gender aware)
 - `isActive`, `isProbableGender`, `resolvedGender`
+- `dressingPercentage` — dressed ÷ live × 100, null if either weight missing
+- `purposeLabel` — "Meat Bird" / "Dual Purpose" / "Layer"
 
 ### `loss_events`
 | Column | Type | Notes |
 |---|---|---|
 | id | TEXT PK | |
 | title | TEXT | e.g. "Fox attack" |
-| status_applied | TEXT | `deceased` / `missing` / `slaughtered` |
+| status_applied | TEXT | `slaughtered` / `deceased` / `missing` |
 | date | TEXT | |
 | affected_chicken_ids_json | TEXT | JSON array |
 | notes | TEXT | nullable |
@@ -157,16 +168,13 @@ lib/
 | track_type | TEXT | `general` / `flock` / `chick` |
 | title | TEXT | |
 | content | TEXT | |
-| date | TEXT | fully retroactive — can be any past date |
+| date | TEXT | fully retroactive |
 | tags | TEXT | comma-separated |
 | photo_paths_json | TEXT | nullable JSON array |
 | chick_batch_id | TEXT | FK → chick_batches, nullable |
 | chick_stage | TEXT | nullable; one of 5 stages |
-| created_at | TEXT | when actually typed |
+| created_at | TEXT | |
 | updated_at | TEXT | |
-
-**Track types:** `general`, `flock`, `chick`
-**Chick stages:** `incubating`, `hatching`, `brooding`, `weaning`, `graduated`
 
 ### `chick_batches`
 | Column | Type | Notes |
@@ -175,29 +183,39 @@ lib/
 | name | TEXT | |
 | breed | TEXT | nullable |
 | start_date | TEXT | day 0 of incubation |
-| egg_count | INTEGER | |
+| egg_count | INTEGER | eggs set |
 | eggs_hatched | INTEGER | nullable |
 | incubator_type | TEXT | nullable |
 | notes | TEXT | nullable |
 | status | TEXT | `incubating` / `hatching` / `raising` / `growing` / `completed` |
+| incubation_days | INTEGER | default 21; breed-aware via lookup |
+| hatch_window_days | INTEGER | default 3; extra days past expected hatch |
+| eggs_to_lockdown | INTEGER | nullable; eggs after candling — usually < egg_count |
+| lockdown_dismissed_date | TEXT | nullable; prevents lockdown prompt re-firing same day |
 | created_at | TEXT | |
 
-**Computed:** `expectedHatchDate` (start + 21 days), `daysIncubated`, `daysRemaining`, `incubationProgress` (0.0–1.0), `hatchRate`
+**Computed getters on `ChickBatch` model:**
+- `expectedHatchDate`, `lastHatchDate`, `totalTrackedDays`
+- `daysIncubated` — capped at totalTrackedDays
+- `isOverdue` — past the full hatch window
+- `lockdownDate` — incubationDays - 3
+- `isOnLockdownDay`, `lockdownDismissedToday`, `showLockdownPrompt`
+- `incubationProgress`, `isInHatchWindow`, `hatchRate`
 
 ### `egg_records`
 | Column | Type | Notes |
 |---|---|---|
 | id | TEXT PK | |
-| chicken_id | TEXT | FK → chickens, nullable (unassigned egg) |
+| chicken_id | TEXT | FK → chickens, nullable |
 | breed_note | TEXT | nullable free-text for unassigned |
-| weight_grams | REAL | |
+| weight_grams | REAL | always stored in grams |
 | egg_color_category | TEXT | one of 12 categories |
 | date | TEXT | |
 | photo_path | TEXT | nullable |
 | notes | TEXT | nullable |
 | created_at | TEXT | |
 
-**Computed:** `sizeGrade` — Peewee / Small / Medium / Large / XL / Jumbo (USDA weights)
+**Computed:** `sizeGrade` — derived at display time from active `EggGradeStandard`. Raw grams are always stored.
 
 ### `sexing_assessments`
 | Column | Type | Notes |
@@ -208,12 +226,166 @@ lib/
 | age_weeks | INTEGER | nullable |
 | claude_result | TEXT | `female` / `male` / `uncertain` |
 | claude_confidence | TEXT | `high` / `medium` / `low` |
-| claude_reasoning | TEXT | 1–3 sentences |
-| claude_caveats | TEXT | nullable breed/age warnings |
-| user_call | TEXT | nullable; `probably_female` / `probably_male` |
-| displayed_gender | TEXT | what was saved to the flock page |
+| claude_reasoning | TEXT | |
+| claude_caveats | TEXT | nullable |
+| user_call | TEXT | nullable |
+| displayed_gender | TEXT | what was saved to the bird |
 
-**Indexes:** `journal_entries(date DESC)`, `journal_entries(track_type)`, `egg_records(date DESC)`, `egg_records(chicken_id)`, `sexing_assessments(chicken_id)`
+---
+
+## Egg grading system (`utils/egg_grade_standard.dart`)
+
+```dart
+enum EggGradeStandard { ukEu, usda }
+```
+
+**UK/EU (default):** S <53g · M 53–63g · L 63–73g · XL ≥73g
+
+**US USDA (6-tier):** Peewee <42g · Small 42–49g · Medium 49–56g · Large 56–63g · XL 63–70g · Jumbo ≥70g
+
+- Raw weights stored in grams always
+- `EggGradeHelper.sizeGrade(weightGrams, standard)` derives the label at display time
+- Switching standard re-grades all historical data instantly with no data loss
+- User sets standard in Settings; persisted in `flutter_secure_storage`
+
+## Weight unit preference (`providers/settings_provider.dart`)
+
+```dart
+enum WeightUnit { grams, oz }
+```
+
+- Default: grams
+- Raw weights always stored internally in grams; conversion at input + display
+- `settings.formatWeight(grams)` → display string e.g. "62.3g" or "2.2oz"
+- `settings.toGrams(value, unit)` / `settings.fromGrams(grams, unit)`
+- Independent of grading standard
+
+### Claude Vision + weight units
+The egg capture screen asks Claude to read the scale weight from a photo. If the unit is ambiguous:
+1. Claude returns the value without unit and flags ambiguity
+2. App shows inline prompt: "We couldn't confirm the unit — is this in g or oz?"
+3. User confirms; app stores in grams after conversion
+
+---
+
+## AI service — `ClaudeService`
+
+Model: `claude-opus-4-6`
+API key: stored in `flutter_secure_storage`, set via Settings screen.
+
+### `analyzeEggPhoto(File imageFile) → ClaudeEggResult`
+- Compresses photo, sends base64 to Claude Vision
+- Prompt reads scale weight + egg colour; respects user's weight unit
+- Returns `{ weightGrams: double?, eggColorCategory: string, unitAmbiguous: bool }`
+
+### `analyzeChickSex(List<File> images, {breed?, ageWeeks?}) → ChickSexResult`
+- Returns `{ likelySex, confidence, reasoning, caveats }`
+- Stored as `SexingAssessment`; user can override before saving to bird profile
+
+---
+
+## Screens in detail
+
+### Home screen (`home_screen.dart`)
+- **Consumer3<JournalProvider, ChickenProvider, EggProvider>**
+- **Dynamic greeting** (`_buildGreeting()`) — rotating farm phrases by time of day, flock-aware lines (egg counts, hen names, hatch days), occasional chicken facts. Seed = `DateTime.now().hour` so it rotates hourly. Implemented as a single swappable method — can revert to static greeting by replacing one call.
+- **Lockdown prompt** (`_LockdownPromptCard`) — shown when `batch.showLockdownPrompt` is true; inline number input + Save; dismissible with X; does not reappear same day
+- **Incubation cards** (`_IncubationCard`) — one per active batch:
+  - Within hatch window: two-tone progress bar (green = incubation, amber = hatch window) + milestone markers
+  - Past hatch window (`isOverdue`): replaces bar with compact "Finalise this clutch" prompt → taps to batch screen
+  - All uses `batch.incubationDays` and `batch.hatchWindowDays` — no hardcoded 21
+
+### Flock screen (`flock_screen.dart`)
+- **Drag-and-drop** — `LongPressDraggable<Chicken>` wraps each bird card (delay 350ms); `DragTarget<Chicken>` wraps each group header; dropping on a header calls `chickenProvider.updateChicken(chicken.copyWith(flockGroupId: targetGroup?.id))`; target group highlights with translucent colour on hover
+- **Meat bird cards** — if `chicken.purpose == 'meat'`, card shows prime roasting window instead of egg count:
+  - Cornish/broiler/Ross: 6–8 weeks from hatch
+  - Ranger/Freedom Ranger/hybrid: 9–11 weeks
+  - Default/heritage: 16–20 weeks
+  - Shows "In prime window" (green) / "Prime window: 5 Apr – 3 Jun" (orange) / "Past prime window" (grey)
+  - Falls back to "Set hatch date" prompt if no hatch date recorded
+- **Loss event** — skull icon top-right; default status = Slaughtered; dropdown order: Slaughtered → Deceased → Missing
+- **Manage groups** — HenIcon top-right
+- **Archived section** — expandable at bottom
+
+### Bird detail screen (`chicken_detail_screen.dart`)
+- Tap photo → fullscreen lightbox (`_PhotoLightbox` with `InteractiveViewer`; dismiss by tap or swipe down)
+- Purpose badge, live weight, dressed weight, dressing % shown in header if set
+
+### Bird edit screen (`chicken_edit_screen.dart`)
+- Camera overlay on photo (dark 28% scrim + camera icon) in edit mode — signals photo is tappable
+- **Purpose** SegmentedButton: Layer / Meat / Dual Purpose
+- **Slaughter weights** — live weight + dressed weight fields shown when status = Slaughtered; dressing % auto-calculated and displayed
+
+### Eggs tab (`egg_tracker_screen.dart`)
+- Each card right column: weight (bold) → Row containing [12px colour dot] [size grade badge]
+- Size grade derived from active `EggGradeStandard` (Settings)
+
+### Clutch / batch screen (`chick_batch_screen.dart`)
+- **Eggs to lockdown** field — between "Eggs hatched" and "Incubator" fields; optional; accepts retro entry at any point; saves to `batch.eggsToLockdown`
+- Two-tone progress bar — dynamic based on `_incubationDays` + `_hatchWindowDays`
+- Breed lookup — on blur, calls `lookupBreedIncubation(breed)` (local table first, Claude Haiku fallback)
+- Steppers for incubation period (14–42 days) and hatch window (0–7 days)
+
+### Insights tab (`insights_screen.dart`)
+- `_StatCard` accepts either `icon: IconData` or `iconWidget: Widget` (allows custom icons)
+- **Total Clutches**: `Icons.bubble_chart_outlined`
+- **Chicks Hatched**: `HenIcon(size: 20)`
+- **Active Birds**: `HenIcon(size: 20)` (NOT Icons.pets)
+
+### Settings screen (`settings_screen.dart`)
+- API key (stored in secure storage)
+- **Egg Settings** card: grading standard SegmentedButton (UK/EU | US USDA) + weight unit SegmentedButton (g | oz)
+
+---
+
+## Provider summary
+
+### `ChickenProvider`
+- Holds: `_chickens`, `_flockGroups`, `_lossEvents`
+- Getters: `activeChickens`, `archivedChickens`, `chickensInGroup(id)`, `ungroupedChickens`, `getById(id)`
+- Methods: `addChicken`, `updateChicken`, `deleteChicken`, `addFlockGroup`, `updateFlockGroup`, `deleteFlockGroup`, `deleteFlockGroupWithBirds`, `logLossEvent`, `deleteLossEvent`, `nameUngroupedChickens`, `addHatchBatch`, `findByEggColor`
+- `addChicken` / `updateChicken` accept: `purpose`, `liveWeightGrams`, `dressedWeightGrams`
+
+### `EggProvider`
+- Holds: `_records`
+- Stats: `averageWeight`, `eggsThisWeek(chickenId?)`, `eggsPerWeek`, `eggsPerMonth`, `sizeGradeDistribution`
+- Methods: `addRecord`, `updateRecord`, `deleteRecord`, `removeRecordsForChicken`
+
+### `JournalProvider`
+- Holds: `_entries`, `_batches`
+- Methods: `addEntry`, `updateEntry`, `deleteEntry`, `addBatch`, `updateBatch`, `deleteBatch`, `getBatchById(id)`
+
+### `SettingsProvider` (ChangeNotifier)
+- Persisted in `flutter_secure_storage`
+- `gradingStandard` (EggGradeStandard) + `weightUnit` (WeightUnit)
+- `setGradingStandard(s)`, `setWeightUnit(u)`
+- `formatWeight(grams)` → display string respecting unit
+- `toGrams(value, unit)` / `fromGrams(grams, unit)`
+
+### `SexingProvider`
+- Lazy-loaded per chicken
+- Methods: `forChicken(id)`, `loadForChicken(id)`, `addAssessment`, `deleteAssessment`, `removeForChicken`
+
+---
+
+## Theme
+
+```dart
+seedColor = Color(0xFF5D8A3C)   // earthy green
+accentAmber = Color(0xFFD4A017) // golden amber
+surfaceTint = Colors.transparent // prevents yellow-green Material 3 surface tint
+```
+Material 3, light + dark mode. FAB: green. Cards: elevation 1, 12px radius.
+
+---
+
+## Custom widgets
+
+### `HenIcon` (`widgets/hen_icon.dart`)
+`CustomPainter` hen silhouette. Parameters: `size` (default 24), `color` (default onPrimary). Used in Flock bottom nav, Manage Groups button, Insights stat cards, empty-state placeholders.
+
+### `SkullIcon` (`widgets/skull_icon.dart`)
+`CustomPainter` chicken skull. Parameters: `size`, `color`. Used in Flock screen top-right (Log Loss Event button).
 
 ---
 
@@ -226,173 +398,49 @@ blue, blue_green, pink, olive, green, unknown
 
 ---
 
-## AI service — `ClaudeService`
-
-Model: `claude-opus-4-6`
-API key: stored in `flutter_secure_storage`, set via Settings screen.
-
-### `analyzeEggPhoto(File imageFile) → ClaudeEggResult`
-- Compresses photo, sends base64 to Claude Vision
-- Prompt: reads scale weight + egg colour from the image
-- Returns: `{ weightGrams: double?, eggColorCategory: string }`
-- `weightGrams` is null if Claude can't read the display
-
-### `analyzeChickSex(List<File> images, {breed?, ageWeeks?}) → ChickSexResult`
-- Sends 1+ chick photos + breed/age context
-- Returns: `{ likelySex: 'female'|'male'|'uncertain', confidence: 'high'|'medium'|'low', reasoning: string, caveats: string? }`
-- Result is stored as a `SexingAssessment`; user can accept or override the gender saved to the bird's profile
-
----
-
-## Screens overview
-
-### Bottom navigation (4 tabs)
-1. **Home** (Coop icon) — Journal screen with General/Flock/Chick tabs
-2. **Eggs** (egg icon) — Egg tracker list; top-right: chart button + Excel export
-3. **Flock** (hen icon) — Bird list grouped by flock; top-right: loss event + manage groups
-4. **Insights** (chart icon) — Stats dashboard; top-right: settings (API key)
-
-### Journal tab
-- Three filter chips: **General / Flock / Chick**
-- Chick tab shows active batches with progress bars then entry list
-- Entries fully retroactive (any past date)
-- Entries can have photos attached
-
-### Eggs tab
-- Lists all egg records sorted by date descending
-- Each card: photo thumbnail, date, hen name, weight, colour, size grade
-- Tap card: expand to edit weight/hen/colour/notes
-- **Add eggs**: opens `EggCaptureScreen` — pick photos from gallery → each photo sent to Claude → review results → save
-- Date auto-extracted from filename (IMG_YYYYMMDD pattern)
-- **Chart button**: weekly production bar chart + weight trend line, per-hen filter, monthly view, size grade pie
-- **Export**: shares Excel file (egg records + per-hen sheets + batch records)
-
-### Flock tab
-- Birds listed in coloured group sections, ungrouped at bottom
-- Each card: photo/avatar, name, breed, age, gender, eggs-this-week badge
-- Tap: `ChickenDetailScreen` — egg history, stats, AI sexing history
-- Long-press: edit or delete bird
-- **Add sheet**: "Add one bird" or "Add from a hatch" (batch create)
-- **Manage groups**: create/rename/delete flock groups
-- **Log loss event**: mark birds as deceased/missing/slaughtered with a named event
-- Archived section at bottom for non-active birds
-
-### Chicken detail screen
-- Header: photo, name, breed, age, gender (with probable indicator), flock group
-- Stats: total eggs, average weight, eggs this week
-- Full egg history list
-- AI sexing history with confidence badges
-- "Assess sex" button → `ChickSexingScreen`
-
-### Insights tab
-- Total eggs all-time, average weight, most productive hen
-- Monthly egg count bar chart
-- Settings gear → API key entry + test
-
----
-
-## Provider summary
-
-### `ChickenProvider`
-- Holds: `_chickens`, `_flockGroups`, `_lossEvents`
-- Getters: `activeChickens`, `archivedChickens`, `chickensInGroup(id)`, `ungroupedChickens`
-- Methods: `addChicken`, `updateChicken`, `deleteChicken`, `addFlockGroup`, `updateFlockGroup`, `deleteFlockGroup`, `deleteFlockGroupWithBirds`, `logLossEvent`, `deleteLossEvent`, `nameUngroupedChickens`, `addHatchBatch`, `findByEggColor`
-
-### `EggProvider`
-- Holds: `_records` (all egg records)
-- Stats: `averageWeight`, `averageWeightForChicken`, `eggsPerWeek`, `eggsPerMonth`, `sizeGradeDistribution`, `eggsThisWeek`
-- Methods: `addRecord`, `updateRecord`, `deleteRecord`, `removeRecordsForChicken`
-
-### `JournalProvider`
-- Holds: `_entries`, `_batches`
-- Getters: `entriesByTrack(type)`, `entriesForBatch(id)`
-- Methods: `addEntry`, `updateEntry`, `deleteEntry`, `addBatch`, `updateBatch`, `deleteBatch`
-
-### `SexingProvider`
-- Lazy-loaded per chicken: `forChicken(id)`, `loadForChicken(id)`
-- Methods: `addAssessment`, `deleteAssessment`, `removeForChicken`
-
----
-
-## Theme
-
-```dart
-seedColor = Color(0xFF5D8A3C)   // earthy green
-accentAmber = Color(0xFFD4A017) // golden amber
-
-// AppBar bg:
-// light: Color(0xFFEFF5E8)
-// dark:  Color(0xFF1A2212)
-```
-Material 3, supports light + dark mode. FAB: green. Cards: elevation 1, 12px border radius. Chips: 20px radius.
-
----
-
 ## Build & release conventions (ALWAYS follow)
 
-1. Bump `pubspec.yaml` version — format `major.minor.patch+buildNumber`
-   - `+buildNumber` must always increase (Android uses it to decide whether to update without wiping data)
-   - Major: redesign / architectural overhaul | Minor: new feature/screen | Patch: bug fix / polish
-2. `flutter build apk --release`
-3. Rename APK: `chicken-journal-v{version}.apk` (never overwrite old APKs)
+1. Bump `pubspec.yaml` — `major.minor.patch+buildNumber` — buildNumber must always increase
+   - Major: redesign / architectural overhaul | Minor: new feature | Patch: bug fix / polish
+2. `flutter build apk --release` (Flutter at `/opt/homebrew/share/flutter/bin/flutter`)
+3. Rename APK: `FlockLedger_v{version}+{build}.apk` — never overwrite old ones
 4. `git commit` the version bump
 5. `git tag v{version}` + `git push origin main --tags`
 6. `gh release create v{version} {apk} --title "..." --notes "..."`
 7. Open Finder at APK output folder
 
-**Signing:** Always uses `~/.android/debug.keystore`. Never delete it. Never uninstall the app before installing a new version — it wipes data.
-
-**APK history in project folder:**
-`v1.4.0`, `v1.4.1`, `v1.4.2`, `v1.5.0`, `v1.5.1`, `v1.5.2`, `v1.5.3`, `v1.5.4`, `v1.5.5`, `v1.5.6`
-(v1.6.x APKs are in `build/app/outputs/flutter-apk/` and GitHub Releases)
+**Signing:** Always `~/.android/debug.keystore` — never delete, never regenerate.
+**Install:** Always over existing app — never uninstall first (wipes data).
+**applicationId / DB filename:** `chicken_journal` (kept intentionally to preserve existing on-device data despite app rename).
 
 ---
 
-## Key design decisions
+## Version history
 
-- **All data on-device** — SQLite, nothing uploaded except compressed photos to Anthropic API
-- **Retroactive entries** — journal entries and egg records can be backdated to any past date; `isRetroactive` flag on `JournalEntry`
-- **Unassigned eggs** — egg records don't require a hen; `breedNote` is a free-text alternative
-- **Flock groups** — optional colour-coded groups; birds can be ungrouped
-- **Loss events** — named events (e.g. "Fox attack") that batch-update bird statuses; stored separately for history
-- **Sexing** — AI assessment is advisory only; user can override; both AI result and user call stored; `displayedGender` is what shows on the flock page
-- **Egg colour matching** — `egg_color_matcher.dart` utility can suggest which hen laid an unassigned egg based on their registered egg colour
+| Version | Build | What shipped |
+|---|---|---|
+| 1.8.1 | 24 | Loss event order/default fix; egg size grade on colour dot line; Active Birds → HenIcon; meat bird prime roasting window; drag-and-drop birds between groups; eggsToLockdown field in clutch screen |
+| 1.8.0 | 23 | Bird purpose (layer/meat/dual); slaughter weights + dressing %; bird photo lightbox; camera edit overlay; egg grading standard (UK/EU + USDA); weight unit (g/oz); dynamic home greeting; lockdown day prompt; overdue hatch state; SkullIcon + HenIcon for flock buttons; Insights icon updates; DB v7 |
+| 1.7.0 | 22 | App renamed FlockLedger; breed incubation lookup (local + AI fallback); hatch window stepper; two-tone progress bar; DB v6; surfaceTint fixed |
 
 ---
 
-## File: `utils/export_utils.dart`
-Builds a multi-sheet Excel file:
-- Sheet 1: All egg records (date, hen, weight, colour, size grade, notes)
-- One sheet per hen: her individual egg history
-- Sheet: Chick batches (name, breed, dates, count, hatch rate)
-Shared via `share_plus`.
+## Pending / not yet built
 
-## File: `utils/date_parser.dart`
-Extracts date from image filename. Pattern: `IMG_YYYYMMDD_…` or `YYYYMMDD_…`. Falls back to `DateTime.now()`.
+### Total Clutches icon
+The current icon `Icons.bubble_chart_outlined` needs replacing. Options offered (not yet chosen):
+- `Icons.workspaces_outlined` — three overlapping circles
+- `Icons.apps_outlined` — grid of dots
+- `Icons.scatter_plot_outlined` — scattered dots (egg-like)
+- `Icons.grid_view_outlined` — grid squares
+- `Icons.layers_outlined` — stacked layers (was the original before bubble_chart)
 
-## File: `utils/egg_color_matcher.dart`
-Given an egg colour category, returns a list of hens registered with that colour. Used in `EggCaptureScreen` to auto-suggest the hen assignment.
+### App icon
+Needs further refinement (details TBD — user to specify).
 
----
-
-## Recent changes (v1.7.0)
-- App renamed from ChickenJournal to FlockLedger
-- `ChickenJournalApp` class renamed to `FlockLedgerApp`
-- GitHub repo: `anwar1808/chicken-journal` → `anwar1808/flock-ledger`
-- `applicationId` and DB filename intentionally kept as `chicken_journal` to preserve existing data on-device
-- Added `lib/utils/breed_incubation_table.dart` — local breed→incubation lookup (~80 breeds) + Claude AI fallback (Haiku model, bundled obfuscated key + user key priority)
-- `ChickBatch` model: added `incubationDays` (default 21) + `hatchWindowDays` (default 3); all hardcoded `21`s replaced with dynamic values
-- DB schema v5→v6: two new columns on `chick_batches` with DEFAULT fallbacks for existing records
-- Batch creation screen: breed field triggers lookup on blur; two steppers (incubation period + hatch window); two-tone progress bar (green = incubation, amber = hatch window); milestones reposition dynamically
-- Theme: added `surfaceTint: Colors.transparent` to remove yellow-green Material 3 surface tint — reversible by deleting that one line in `lib/app.dart`
-
-## Pending iterations (not yet built)
-1. Overdue hatch state (Option D) — past hatch window shows "finalise this clutch" prompt instead of progress bar; fix home screen hardcoded `21`
-2. Dynamic home greeting (Option 6) — farm time-of-day language + flock-aware data + fun facts; behind a single swappable method for easy revert
-3. Lockdown day prompt — home screen action item on lockdown day asking how many eggs are going into lockdown (separate from eggs-set count)
-4. Bird detail screen — tap photo to open fullscreen lightbox
-5. Bird edit screen — camera/edit icon overlay on photo to indicate it's tappable
-6. Flock screen top-right icons — loss event icon → chicken skull; manage groups icon → hen icon (same as bottom nav)
+### Deferred (complex — own build)
+- **Same-colour egg attribution** — dual mode per group: Collective (daily total ÷ active hens) vs Individual (per-hen logging via trapnest/leg ring)
+- **Drag-and-drop between groups** — ✅ shipped in v1.8.1
 
 ---
 
@@ -404,7 +452,7 @@ flutter pub get
 flutter run          # deploys to connected Android phone via USB
 ```
 
-To build release APK:
+Build release APK:
 ```bash
 flutter build apk --release
 # output: build/app/outputs/flutter-apk/app-release.apk
