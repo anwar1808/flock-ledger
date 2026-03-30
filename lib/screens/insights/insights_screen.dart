@@ -182,7 +182,7 @@ class _HatchSummaryCards extends StatelessWidget {
                 child: _StatCard(
               label: 'Total Clutches',
               value: totalBatches.toString(),
-              icon: Icons.bubble_chart_outlined,
+              icon: Icons.album_outlined,
             )),
             const SizedBox(width: 12),
             Expanded(
