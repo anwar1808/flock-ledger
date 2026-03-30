@@ -32,6 +32,10 @@ class _ChickBatchScreenState extends State<ChickBatchScreen> {
   String _status = 'incubating';
   bool _saving = false;
 
+  // Actual hatch date range
+  DateTime? _actualHatchStart;
+  DateTime? _actualHatchEnd;
+
   // Incubation settings
   int _incubationDays = 21;
   int _hatchWindowDays = 3;
@@ -69,6 +73,8 @@ class _ChickBatchScreenState extends State<ChickBatchScreen> {
         _status = batch.status;
         _incubationDays = batch.incubationDays;
         _hatchWindowDays = batch.hatchWindowDays;
+        _actualHatchStart = batch.actualHatchStart;
+        _actualHatchEnd = batch.actualHatchEnd;
         if (batch.breed != null) {
           _breedLookupNote = '$_incubationDays days · saved';
         }
@@ -126,6 +132,8 @@ class _ChickBatchScreenState extends State<ChickBatchScreen> {
         eggCount: eggCount,
         eggsHatched: eggsHatched,
         eggsToLockdown: eggsToLockdown,
+        actualHatchStart: _actualHatchStart,
+        actualHatchEnd: _actualHatchEnd,
         incubatorType: _incubatorController.text.trim().isNotEmpty
             ? _incubatorController.text.trim()
             : null,
@@ -253,7 +261,7 @@ class _ChickBatchScreenState extends State<ChickBatchScreen> {
 
             // ── Sex my chicks button ──────────────────────────────────────
             if (_isEditing &&
-                (_status == 'raising' || _status == 'growing')) ...[
+                _status == 'raising') ...[
               OutlinedButton.icon(
                 icon: const Icon(Icons.search, size: 16),
                 label: const Text('Sex my chicks with Claude'),
@@ -385,19 +393,51 @@ class _ChickBatchScreenState extends State<ChickBatchScreen> {
             ),
             ListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('Expected Hatch Date'),
-              subtitle: Text(DateFormat('d MMMM yyyy').format(expectedHatch)),
+              title: const Text('Expected Hatch Window'),
+              subtitle: Text(
+                _hatchWindowDays > 0
+                    ? '${DateFormat('d MMM').format(expectedHatch)} – ${DateFormat('d MMM yyyy').format(lastHatch)}'
+                    : DateFormat('d MMMM yyyy').format(expectedHatch),
+              ),
               leading: const Icon(Icons.event, color: Color(0xFF5D8A3C)),
             ),
-            if (_hatchWindowDays > 0)
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Latest Hatch Date'),
-                subtitle: Text(DateFormat('d MMMM yyyy').format(lastHatch)),
-                leading: Icon(Icons.event_outlined,
-                    color: Colors.orange.shade600),
-              ),
             const SizedBox(height: 12),
+
+            // ── Actual hatch dates ────────────────────────────────────────
+            if (_status != 'incubating') ...[
+              Text('Actual Hatch Dates',
+                  style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: 4),
+              Text(
+                'When did the first and last chick emerge?',
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: _DateTile(
+                      label: 'First hatched',
+                      date: _actualHatchStart,
+                      onPick: (d) => setState(() => _actualHatchStart = d),
+                      onClear: () => setState(() => _actualHatchStart = null),
+                      firstDate: _startDate,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _DateTile(
+                      label: 'Last hatched',
+                      date: _actualHatchEnd,
+                      onPick: (d) => setState(() => _actualHatchEnd = d),
+                      onClear: () => setState(() => _actualHatchEnd = null),
+                      firstDate: _actualHatchStart ?? _startDate,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+            ],
 
             // ── Egg count ─────────────────────────────────────────────────
             TextFormField(
@@ -487,9 +527,8 @@ class _ChickBatchScreenState extends State<ChickBatchScreen> {
                 DropdownMenuItem(
                     value: 'raising', child: Text('Raising Chicks')),
                 DropdownMenuItem(
-                    value: 'growing', child: Text('Growing Up')),
-                DropdownMenuItem(
-                    value: 'completed', child: Text('Completed')),
+                    value: 'completed',
+                    child: Text('Completed or Living Outdoors')),
               ],
               onChanged: (v) {
                 if (v != null) setState(() => _status = v);
@@ -687,6 +726,84 @@ class _ChickBatchScreenState extends State<ChickBatchScreen> {
           ),
         ),
       ],
+    );
+  }
+}
+
+// ── Compact date picker tile ──────────────────────────────────────────────────
+
+class _DateTile extends StatelessWidget {
+  final String label;
+  final DateTime? date;
+  final ValueChanged<DateTime> onPick;
+  final VoidCallback onClear;
+  final DateTime firstDate;
+
+  const _DateTile({
+    required this.label,
+    required this.date,
+    required this.onPick,
+    required this.onClear,
+    required this.firstDate,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: () async {
+        final picked = await showDatePicker(
+          context: context,
+          initialDate: date ?? DateTime.now(),
+          firstDate: firstDate,
+          lastDate: DateTime.now().add(const Duration(days: 7)),
+        );
+        if (picked != null) onPick(picked);
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey.shade300),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label,
+                      style: TextStyle(
+                          fontSize: 11, color: Colors.grey.shade600)),
+                  const SizedBox(height: 2),
+                  Text(
+                    date != null
+                        ? DateFormat('d MMM yyyy').format(date!)
+                        : 'Tap to set',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: date != null
+                          ? FontWeight.w500
+                          : FontWeight.normal,
+                      color:
+                          date != null ? null : Colors.grey.shade400,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (date != null)
+              GestureDetector(
+                onTap: onClear,
+                child: Icon(Icons.clear,
+                    size: 16, color: Colors.grey.shade400),
+              )
+            else
+              Icon(Icons.calendar_today_outlined,
+                  size: 16, color: Colors.grey.shade400),
+          ],
+        ),
+      ),
     );
   }
 }

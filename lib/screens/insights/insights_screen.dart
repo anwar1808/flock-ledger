@@ -134,8 +134,7 @@ class _HatchingTab extends StatelessWidget {
             if (batches.any((b) =>
                 b.status == 'incubating' ||
                 b.status == 'hatching' ||
-                b.status == 'raising' ||
-                b.status == 'growing')) ...[
+                b.status == 'raising')) ...[
               _ActiveBatchStatus(batches: batches),
               const SizedBox(height: 16),
             ],
@@ -236,18 +235,16 @@ class _ActiveBatchStatus extends StatelessWidget {
     }
     if (statusGroups.isEmpty) return const SizedBox.shrink();
 
-    final order = ['incubating', 'hatching', 'raising', 'growing'];
+    final order = ['incubating', 'hatching', 'raising'];
     final labels = {
       'incubating': 'Incubating',
       'hatching': 'Hatching',
       'raising': 'Raising',
-      'growing': 'Growing',
     };
     final colors = {
       'incubating': const Color(0xFF4A90D9),
       'hatching': const Color(0xFFD4A017),
       'raising': const Color(0xFF5D8A3C),
-      'growing': const Color(0xFF8A5D3C),
     };
 
     return Card(

@@ -25,7 +25,7 @@ class DatabaseHelper {
     final path = join(dbPath, 'chicken_journal.db');
     return openDatabase(
       path,
-      version: 7,
+      version: 8,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -114,6 +114,8 @@ class DatabaseHelper {
         hatch_window_days INTEGER NOT NULL DEFAULT 3,
         eggs_to_lockdown INTEGER,
         lockdown_dismissed_date TEXT,
+        actual_hatch_start TEXT,
+        actual_hatch_end TEXT,
         created_at TEXT NOT NULL
       )
     ''');
@@ -243,6 +245,15 @@ class DatabaseHelper {
           'ALTER TABLE chick_batches ADD COLUMN eggs_to_lockdown INTEGER');
       await db.execute(
           'ALTER TABLE chick_batches ADD COLUMN lockdown_dismissed_date TEXT');
+    }
+    if (oldVersion < 8) {
+      await db.execute(
+          'ALTER TABLE chick_batches ADD COLUMN actual_hatch_start TEXT');
+      await db.execute(
+          'ALTER TABLE chick_batches ADD COLUMN actual_hatch_end TEXT');
+      // 'growing' status removed — migrate existing records to 'completed'
+      await db.execute(
+          "UPDATE chick_batches SET status = 'completed' WHERE status = 'growing'");
     }
   }
 

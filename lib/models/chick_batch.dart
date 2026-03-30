@@ -16,6 +16,10 @@ class ChickBatch {
   final int? eggsToLockdown;
   /// The date the lockdown prompt was dismissed, to avoid re-showing it same day.
   final DateTime? lockdownDismissedDate;
+  /// Date the first chick hatched (actual, recorded by user).
+  final DateTime? actualHatchStart;
+  /// Date the last chick hatched (actual, recorded by user).
+  final DateTime? actualHatchEnd;
   final DateTime createdAt;
 
   const ChickBatch({
@@ -32,6 +36,8 @@ class ChickBatch {
     this.hatchWindowDays = 3,
     this.eggsToLockdown,
     this.lockdownDismissedDate,
+    this.actualHatchStart,
+    this.actualHatchEnd,
     required this.createdAt,
   });
 
@@ -112,6 +118,8 @@ class ChickBatch {
       'hatch_window_days': hatchWindowDays,
       'eggs_to_lockdown': eggsToLockdown,
       'lockdown_dismissed_date': lockdownDismissedDate?.toIso8601String(),
+      'actual_hatch_start': actualHatchStart?.toIso8601String(),
+      'actual_hatch_end': actualHatchEnd?.toIso8601String(),
       'created_at': createdAt.toIso8601String(),
     };
   }
@@ -133,6 +141,12 @@ class ChickBatch {
       lockdownDismissedDate: map['lockdown_dismissed_date'] != null
           ? DateTime.parse(map['lockdown_dismissed_date'] as String)
           : null,
+      actualHatchStart: map['actual_hatch_start'] != null
+          ? DateTime.parse(map['actual_hatch_start'] as String)
+          : null,
+      actualHatchEnd: map['actual_hatch_end'] != null
+          ? DateTime.parse(map['actual_hatch_end'] as String)
+          : null,
       createdAt: DateTime.parse(map['created_at'] as String),
     );
   }
@@ -151,6 +165,8 @@ class ChickBatch {
     int? hatchWindowDays,
     int? eggsToLockdown,
     DateTime? lockdownDismissedDate,
+    DateTime? actualHatchStart,
+    DateTime? actualHatchEnd,
     DateTime? createdAt,
   }) {
     return ChickBatch(
@@ -168,6 +184,8 @@ class ChickBatch {
       eggsToLockdown: eggsToLockdown ?? this.eggsToLockdown,
       lockdownDismissedDate:
           lockdownDismissedDate ?? this.lockdownDismissedDate,
+      actualHatchStart: actualHatchStart ?? this.actualHatchStart,
+      actualHatchEnd: actualHatchEnd ?? this.actualHatchEnd,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -177,7 +195,6 @@ const kBatchStatuses = [
   'incubating',
   'hatching',
   'raising',
-  'growing',
   'completed',
 ];
 
@@ -185,6 +202,5 @@ const kBatchStatusLabels = {
   'incubating': 'Incubating',
   'hatching': 'Hatching',
   'raising': 'Raising Chicks',
-  'growing': 'Growing Up',
-  'completed': 'Completed',
+  'completed': 'Completed or Living Outdoors',
 };
