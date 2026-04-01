@@ -217,6 +217,7 @@ Rules:
     final requestBody = {
       'model': _model,
       'max_tokens': 768,
+      'temperature': 0,
       'messages': [
         {
           'role': 'user',
