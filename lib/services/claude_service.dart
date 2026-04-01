@@ -76,8 +76,7 @@ If you cannot read the scale clearly, set weight_grams to null.''',
     );
 
     if (response.statusCode != 200) {
-      throw ClaudeServiceException(
-          'API returned ${response.statusCode}: ${response.body}');
+      throw ClaudeServiceException._fromStatus(response.statusCode);
     }
 
     final responseData = jsonDecode(response.body) as Map<String, dynamic>;
@@ -88,7 +87,7 @@ If you cannot read the scale clearly, set weight_grams to null.''',
     final jsonMatch = RegExp(r'\{[\s\S]*\}').firstMatch(text);
     if (jsonMatch == null) {
       throw ClaudeServiceException(
-          'Could not parse JSON from Claude response: $text');
+          'Could not parse response from Claude. Please try again.');
     }
 
     final parsed = jsonDecode(jsonMatch.group(0)!) as Map<String, dynamic>;
@@ -177,8 +176,7 @@ Rules:
     );
 
     if (response.statusCode != 200) {
-      throw ClaudeServiceException(
-          'API returned ${response.statusCode}: ${response.body}');
+      throw ClaudeServiceException._fromStatus(response.statusCode);
     }
 
     final responseData =
@@ -189,7 +187,7 @@ Rules:
     final jsonMatch = RegExp(r'\{[\s\S]*\}').firstMatch(text);
     if (jsonMatch == null) {
       throw ClaudeServiceException(
-          'Could not parse JSON from Claude response: $text');
+          'Could not parse response from Claude. Please try again.');
     }
 
     final parsed =
@@ -223,8 +221,35 @@ class ChickSexResult {
 
 class ClaudeServiceException implements Exception {
   final String message;
-  const ClaudeServiceException(this.message);
+  /// True when the error is caused by an invalid or missing API key (HTTP 401).
+  final bool isAuthError;
+
+  const ClaudeServiceException(this.message, {this.isAuthError = false});
+
+  factory ClaudeServiceException._fromStatus(int statusCode) {
+    switch (statusCode) {
+      case 401:
+        return const ClaudeServiceException(
+          'Invalid API key — please update it in Settings.',
+          isAuthError: true,
+        );
+      case 429:
+        return const ClaudeServiceException(
+          'Rate limit reached. Please wait a moment and try again.',
+        );
+      case 500:
+      case 502:
+      case 503:
+        return const ClaudeServiceException(
+          'The Anthropic service is temporarily unavailable. Please try again shortly.',
+        );
+      default:
+        return ClaudeServiceException(
+          'Something went wrong (error $statusCode). Please try again.',
+        );
+    }
+  }
 
   @override
-  String toString() => 'ClaudeServiceException: $message';
+  String toString() => message;
 }

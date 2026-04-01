@@ -29,6 +29,7 @@ class _ChickSexingScreenState extends State<ChickSexingScreen> {
   ChickSexResult? _result;
   bool _analysing = false;
   String? _error;
+  bool _errorIsAuth = false;
   int _thumbnailIndex = 0;
   String? _userGenderCall; // 'probably_female' | 'probably_male' | null
 
@@ -98,6 +99,7 @@ class _ChickSexingScreenState extends State<ChickSexingScreen> {
       _analysing = true;
       _result = null;
       _error = null;
+      _errorIsAuth = false;
       _thumbnailIndex = 0;
       _userGenderCall = null;
     });
@@ -113,7 +115,13 @@ class _ChickSexingScreenState extends State<ChickSexingScreen> {
       );
       if (mounted) setState(() => _result = result);
     } catch (e) {
-      if (mounted) setState(() => _error = e.toString());
+      if (mounted) {
+        final isAuth = e is ClaudeServiceException && e.isAuthError;
+        setState(() {
+          _error = e is ClaudeServiceException ? e.message : e.toString();
+          _errorIsAuth = isAuth;
+        });
+      }
     } finally {
       if (mounted) setState(() => _analysing = false);
     }
@@ -294,16 +302,46 @@ class _ChickSexingScreenState extends State<ChickSexingScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Theme.of(context)
-                    .colorScheme
-                    .errorContainer,
+                color: Theme.of(context).colorScheme.errorContainer,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Text(_error!,
-                  style: TextStyle(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .onErrorContainer)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _error!,
+                    style: TextStyle(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onErrorContainer),
+                  ),
+                  if (_errorIsAuth) ...[
+                    const SizedBox(height: 10),
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.settings_outlined, size: 16),
+                      label: const Text('Go to Settings'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor:
+                            Theme.of(context).colorScheme.onErrorContainer,
+                        side: BorderSide(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onErrorContainer
+                                .withValues(alpha: 0.5)),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const SettingsScreen()),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             ),
           ],
 
