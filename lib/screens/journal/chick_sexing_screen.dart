@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 
 import 'package:uuid/uuid.dart';
@@ -76,6 +78,19 @@ class _ChickSexingScreenState extends State<ChickSexingScreen> {
     }
   }
 
+  Future<File?> _compressForApi(File source) async {
+    final dir = await getTemporaryDirectory();
+    final out = '${dir.path}/sex_${const Uuid().v4()}.jpg';
+    final result = await FlutterImageCompress.compressAndGetFile(
+      source.path,
+      out,
+      minWidth: 1568,
+      minHeight: 1568,
+      quality: 82,
+    );
+    return result != null ? File(result.path) : null;
+  }
+
   Future<void> _analyse() async {
     if (_photos.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -106,9 +121,15 @@ class _ChickSexingScreenState extends State<ChickSexingScreen> {
     });
 
     try {
+      final compressed = <File>[];
+      for (final photo in _photos) {
+        final c = await _compressForApi(photo);
+        compressed.add(c ?? photo);
+      }
+
       final service = ClaudeService(apiKey);
       final result = await service.analyzeChickSex(
-        _photos,
+        compressed,
         breed: _breedController.text.trim().isNotEmpty
             ? _breedController.text.trim()
             : null,
