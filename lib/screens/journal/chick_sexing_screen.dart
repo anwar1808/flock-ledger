@@ -35,6 +35,7 @@ class _ChickSexingScreenState extends State<ChickSexingScreen> {
   String? _error;
   bool _errorIsAuth = false;
   int _thumbnailIndex = 0;
+  bool _tipExpanded = false;
   String? _userGenderCall; // 'probably_female' | 'probably_male' | null
 
   @override
@@ -289,6 +290,125 @@ class _ChickSexingScreenState extends State<ChickSexingScreen> {
     return weeks != null && weeks >= 6;
   }
 
+  void _showPhotoGuide(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.75,
+        minChildSize: 0.4,
+        maxChildSize: 0.95,
+        expand: false,
+        builder: (_, scrollController) => ListView(
+          controller: scrollController,
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+          children: [
+            Center(
+              child: Container(
+                width: 40, height: 4,
+                margin: const EdgeInsets.only(bottom: 20),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const Text(
+              'Photo guide for best results',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Photo quality is the single biggest factor in sexing accuracy. '
+              'Here\'s what to capture.',
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+            ),
+            const SizedBox(height: 20),
+            _GuideSection(
+              icon: Icons.view_agenda_outlined,
+              iconColor: const Color(0xFF5D8A3C),
+              title: 'Side profile — full body',
+              body: 'Stand the bird on flat ground and shoot from the side at '
+                  'bird height. Shows comb height, tail angle, body frame size, '
+                  'and feather coverage in one shot. This is the most useful single angle.',
+            ),
+            _GuideSection(
+              icon: Icons.face_outlined,
+              iconColor: const Color(0xFF4A90D9),
+              title: 'Head close-up — front or ¾ angle',
+              body: 'Get close enough to see the comb clearly. Shows comb size '
+                  'and colour (pinkness = earlier maturity), wattle presence, '
+                  'and eye placement. This is the most important cue under 12 weeks.',
+            ),
+            _GuideSection(
+              icon: Icons.compare_outlined,
+              iconColor: Colors.deepOrange.shade600,
+              title: 'Sibling comparison',
+              body: 'A photo with a littermate of the same age is extremely useful. '
+                  'Body size difference is one of the strongest cues for broiler '
+                  'crosses (Hubbard, Ross, Cobb). Males grow visibly larger '
+                  'by 6–8 weeks.',
+            ),
+            _GuideSection(
+              icon: Icons.remove_red_eye_outlined,
+              iconColor: Colors.purple.shade600,
+              title: 'Back / hackle shot (6 weeks+)',
+              body: 'A top-down or ¾ rear view shows hackle feather shape. '
+                  'Pointed, shiny hackle feathers indicate a cockerel; '
+                  'rounded, matte feathers indicate a pullet. '
+                  'Saddle feathers (lower back) start appearing around 10–12 weeks.',
+            ),
+            const Divider(height: 32),
+            Row(
+              children: [
+                Icon(Icons.do_not_disturb_alt_outlined,
+                    size: 16, color: Colors.red.shade400),
+                const SizedBox(width: 8),
+                const Text('What to avoid',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+              ],
+            ),
+            const SizedBox(height: 10),
+            _AvoidItem('Bird crouching, hiding, or facing away'),
+            _AvoidItem('Dark backgrounds or strong backlighting'),
+            _AvoidItem('Single blurry or far-away shot'),
+            _AvoidItem('Only one angle — multiple angles always improve accuracy'),
+            _AvoidItem('Holding the bird in a way that compresses the comb'),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.blue.shade100),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.tips_and_updates_outlined,
+                      size: 16, color: Colors.blue.shade700),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Aim for 3–4 photos: one side profile, one head close-up, '
+                      'one with a sibling, and one back/hackle shot if 6 weeks+. '
+                      'More isn\'t always better — four good shots beat eight blurry ones.',
+                      style: TextStyle(
+                          fontSize: 12, color: Colors.blue.shade800),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final birdTerm = _isOlderBird ? 'Sex a Pullet / Cockerel' : 'Sex a Chick';
@@ -341,9 +461,26 @@ class _ChickSexingScreenState extends State<ChickSexingScreen> {
           ),
           const SizedBox(height: 20),
 
-          // Photo picker
-          Text('Photos (up to 8)',
-              style: Theme.of(context).textTheme.titleSmall),
+          // Photo tips — collapsed by default
+          _PhotoTipCard(
+            expanded: _tipExpanded,
+            onToggle: () => setState(() => _tipExpanded = !_tipExpanded),
+          ),
+          const SizedBox(height: 16),
+
+          // Photo picker header + info button
+          Row(
+            children: [
+              Text('Photos (up to 8)',
+                  style: Theme.of(context).textTheme.titleSmall),
+              const Spacer(),
+              GestureDetector(
+                onTap: () => _showPhotoGuide(context),
+                child: Icon(Icons.info_outline,
+                    size: 18, color: Colors.grey.shade500),
+              ),
+            ],
+          ),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
@@ -764,6 +901,176 @@ class _ResultCard extends StatelessWidget {
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ─── Photo tip card ──────────────────────────────────────────────────────────
+
+class _PhotoTipCard extends StatelessWidget {
+  final bool expanded;
+  final VoidCallback onToggle;
+
+  const _PhotoTipCard({required this.expanded, required this.onToggle});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onToggle,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.blue.shade50,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.blue.shade100),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.camera_alt_outlined,
+                    size: 16, color: Colors.blue.shade700),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Get better results — photo tips',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.blue.shade800,
+                    ),
+                  ),
+                ),
+                Icon(
+                  expanded
+                      ? Icons.keyboard_arrow_up
+                      : Icons.keyboard_arrow_down,
+                  size: 18,
+                  color: Colors.blue.shade600,
+                ),
+              ],
+            ),
+            if (expanded) ...[
+              const SizedBox(height: 10),
+              _TipRow(icon: Icons.view_agenda_outlined,
+                  text: 'Side profile — full body standing naturally'),
+              _TipRow(icon: Icons.face_outlined,
+                  text: 'Head close-up — front or ¾ view to show comb clearly'),
+              _TipRow(icon: Icons.compare_outlined,
+                  text: 'Sibling shot — body size difference is a strong cue'),
+              _TipRow(icon: Icons.remove_red_eye_outlined,
+                  text: 'Back/hackle view at 6 weeks+ — feather shape matters'),
+              const SizedBox(height: 6),
+              Text(
+                'Tap ⓘ next to "Photos" for the full guide.',
+                style: TextStyle(fontSize: 11, color: Colors.blue.shade600),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TipRow extends StatelessWidget {
+  final IconData icon;
+  final String text;
+
+  const _TipRow({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 14, color: Colors.blue.shade600),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(text,
+                style: TextStyle(fontSize: 12, color: Colors.blue.shade900)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Bottom sheet guide helpers ───────────────────────────────────────────────
+
+class _GuideSection extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String body;
+
+  const _GuideSection({
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    required this.body,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            margin: const EdgeInsets.only(right: 12, top: 2),
+            decoration: BoxDecoration(
+              color: iconColor.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 18, color: iconColor),
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 14)),
+                const SizedBox(height: 3),
+                Text(body,
+                    style: TextStyle(
+                        fontSize: 13, color: Colors.grey.shade700)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AvoidItem extends StatelessWidget {
+  final String text;
+  const _AvoidItem(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.close, size: 14, color: Colors.red.shade400),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(text,
+                style: TextStyle(
+                    fontSize: 13, color: Colors.grey.shade700)),
+          ),
+        ],
       ),
     );
   }
