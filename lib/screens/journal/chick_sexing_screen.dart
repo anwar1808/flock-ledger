@@ -344,15 +344,6 @@ class _ChickSexingScreenState extends State<ChickSexingScreen> {
                   'and eye placement. This is the most important cue under 12 weeks.',
             ),
             _GuideSection(
-              icon: Icons.compare_outlined,
-              iconColor: Colors.deepOrange.shade600,
-              title: 'Sibling comparison',
-              body: 'A photo with a littermate of the same age is extremely useful. '
-                  'Body size difference is one of the strongest cues for broiler '
-                  'crosses (Hubbard, Ross, Cobb). Males grow visibly larger '
-                  'by 6–8 weeks.',
-            ),
-            _GuideSection(
               icon: Icons.remove_red_eye_outlined,
               iconColor: Colors.purple.shade600,
               title: 'Back / hackle shot (6 weeks+)',
@@ -393,9 +384,9 @@ class _ChickSexingScreenState extends State<ChickSexingScreen> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Aim for 3–4 photos: one side profile, one head close-up, '
-                      'one with a sibling, and one back/hackle shot if 6 weeks+. '
-                      'More isn\'t always better — four good shots beat eight blurry ones.',
+                      'Aim for 2–3 photos: one side profile, one head close-up, '
+                      'and one back/hackle shot if 6 weeks+. '
+                      'More isn\'t always better — three good shots beat eight blurry ones.',
                       style: TextStyle(
                           fontSize: 12, color: Colors.blue.shade800),
                     ),
@@ -411,9 +402,8 @@ class _ChickSexingScreenState extends State<ChickSexingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final birdTerm = _isOlderBird ? 'Sex a Pullet / Cockerel' : 'Sex a Chick';
     return Scaffold(
-      appBar: AppBar(title: Text(birdTerm)),
+      appBar: AppBar(title: const Text('Sex a Bird')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -428,11 +418,8 @@ class _ChickSexingScreenState extends State<ChickSexingScreen> {
               borderRadius: BorderRadius.circular(10),
             ),
             child: Text(
-              _isOlderBird
-                  ? 'At 6+ weeks, comb, wattle, and feathering differences are '
-                    'usually clear. This should give a confident result.'
-                  : 'Visual sexing is not 100% accurate, especially under 6 weeks. '
-                    'This is a guide, not a guarantee.',
+              'Visual sexing is not 100% accurate, especially under 6 weeks. '
+              'This is a guide, not a guarantee.',
               style: TextStyle(
                   color: Colors.grey.shade700, fontSize: 12),
             ),
@@ -959,8 +946,6 @@ class _PhotoTipCard extends StatelessWidget {
                   text: 'Side profile — full body standing naturally'),
               _TipRow(icon: Icons.face_outlined,
                   text: 'Head close-up — front or ¾ view to show comb clearly'),
-              _TipRow(icon: Icons.compare_outlined,
-                  text: 'Sibling shot — body size difference is a strong cue'),
               _TipRow(icon: Icons.remove_red_eye_outlined,
                   text: 'Back/hackle view at 6 weeks+ — feather shape matters'),
               const SizedBox(height: 6),
