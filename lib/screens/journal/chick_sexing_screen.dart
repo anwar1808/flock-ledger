@@ -39,6 +39,8 @@ class _ChickSexingScreenState extends State<ChickSexingScreen> {
   @override
   void initState() {
     super.initState();
+    // Rebuild when age changes so title/disclaimer update live
+    _ageController.addListener(() => setState(() {}));
     if (widget.chickenId != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         final chicken =
@@ -212,10 +214,16 @@ class _ChickSexingScreenState extends State<ChickSexingScreen> {
     }
   }
 
+  bool get _isOlderBird {
+    final weeks = int.tryParse(_ageController.text.trim());
+    return weeks != null && weeks >= 6;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final birdTerm = _isOlderBird ? 'Sex a Pullet / Cockerel' : 'Sex a Chick';
     return Scaffold(
-      appBar: AppBar(title: const Text('Sex a Chick')),
+      appBar: AppBar(title: Text(birdTerm)),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -230,8 +238,11 @@ class _ChickSexingScreenState extends State<ChickSexingScreen> {
               borderRadius: BorderRadius.circular(10),
             ),
             child: Text(
-              'Visual sexing is not 100% accurate, especially under 6 weeks. '
-              'This is a guide, not a guarantee.',
+              _isOlderBird
+                  ? 'At 6+ weeks, comb, wattle, and feathering differences are '
+                    'usually clear. This should give a confident result.'
+                  : 'Visual sexing is not 100% accurate, especially under 6 weeks. '
+                    'This is a guide, not a guarantee.',
               style: TextStyle(
                   color: Colors.grey.shade700, fontSize: 12),
             ),
