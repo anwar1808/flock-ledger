@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 
 import 'package:uuid/uuid.dart';
 import '../../providers/chicken_provider.dart';
+import '../../utils/breed_sexing_table.dart';
 import '../../providers/sexing_provider.dart';
 import '../../models/sexing_assessment.dart';
 import '../../screens/settings/settings_screen.dart';
@@ -212,6 +213,75 @@ class _ChickSexingScreenState extends State<ChickSexingScreen> {
       );
       Navigator.pop(context);
     }
+  }
+
+  String? _buildFollowUpTip(ChickSexResult result, int? ageWeeks, String? breed) {
+    final breedInfo = breed != null && breed.isNotEmpty
+        ? lookupBreedSexingInfo(breed)
+        : null;
+
+    // Sex-linked / autosexing at hatch — no re-check needed
+    if (breedInfo?.sexLinkedAtHatch == true && (ageWeeks == null || ageWeeks <= 3)) {
+      return 'This breed is sex-linked — colour at hatch is definitive. No re-check needed.';
+    }
+
+    // Very difficult breeds — always give re-check guidance
+    if (breedInfo?.difficulty == 'very_hard') {
+      final b = breed?.toLowerCase() ?? '';
+      if (b.contains('silkie') || b.contains('silky')) {
+        return 'Silkies are notoriously hard to sex. Even at 8–12 weeks the result may be uncertain. '
+            'Re-check at 12–16 weeks — males develop streamer crest feathers and start mounting. '
+            'Crowing (3–5 months) gives a definitive answer. DNA sexing is the most reliable option before 4 months.';
+      }
+      if (b.contains('polish')) {
+        return 'Polish are tricky as the crest obscures the comb. Re-check at 12 weeks — '
+            'males develop a wilder, spikier crest while females keep a neat rounded one. '
+            'Crowing (12–16 weeks) is the most reliable confirmation.';
+      }
+      if (b.contains('sebright')) {
+        return 'Sebrights are hen-feathered — cockerels lack the pointed hackle feathers '
+            'of most breeds, making visual sexing very difficult. Re-check at 12 weeks. '
+            'Crowing (12–16 weeks) is the most reliable confirmation.';
+      }
+      final recheck = breedInfo!.earliestReliableWeeks;
+      return 'This breed is difficult to sex visually before $recheck weeks. '
+          'Re-check then, or wait for crowing (12–16 weeks) or first egg (18–20 weeks).';
+    }
+
+    // Low / very low confidence — always suggest re-check
+    if (result.confidence == 'very_low' || result.confidence == 'low') {
+      final recheckAge = (ageWeeks != null && ageWeeks < 6) ? 8 : 12;
+      return 'Confidence is low — consider re-checking at $recheckAge weeks '
+          'when comb and wattle differences are more pronounced.';
+    }
+
+    // Age too young for this breed
+    if (ageWeeks != null && breedInfo != null &&
+        ageWeeks < breedInfo.earliestReliableWeeks) {
+      return 'At $ageWeeks weeks, ${breed ?? 'this breed'} is still early for reliable sexing. '
+          'Re-check at ${breedInfo.earliestReliableWeeks} weeks for a more confident result.';
+    }
+
+    // Age-based generic tips
+    if (ageWeeks != null) {
+      if (ageWeeks < 6) {
+        return 'At $ageWeeks weeks, sexing is still early for most breeds. '
+            'Re-check at 8 weeks when comb and wattle differences are clearer.';
+      }
+      if (ageWeeks < 9) {
+        return 'At $ageWeeks weeks this result should be reliable for most breeds. '
+            'For extra confidence, re-check at 12 weeks when hackle and saddle feathers begin developing. '
+            'Crowing (12–16 weeks) or first egg (18–20 weeks) gives a definitive answer.';
+      }
+      if (ageWeeks < 14) {
+        return 'At $ageWeeks weeks, visual sexing should be accurate for most breeds. '
+            'Crowing (12–16 weeks) or first egg (18–20 weeks) will give final confirmation.';
+      }
+      // 14+ weeks — result is reliable, no tip needed
+      return null;
+    }
+
+    return null;
   }
 
   bool get _isOlderBird {
@@ -450,10 +520,11 @@ class _ChickSexingScreenState extends State<ChickSexingScreen> {
             ),
           ],
 
-          // "Your call" override — shown when medium or low confidence
+          // "Your call" override — shown for moderate/low/very_low confidence
           if (_result != null &&
-              (_result!.confidence == 'medium' ||
-                  _result!.confidence == 'low')) ...[
+              (_result!.confidence == 'moderate' ||
+                  _result!.confidence == 'low' ||
+                  _result!.confidence == 'very_low')) ...[
             const SizedBox(height: 20),
             Container(
               padding: const EdgeInsets.all(14),
@@ -529,6 +600,43 @@ class _ChickSexingScreenState extends State<ChickSexingScreen> {
               result: _result!,
               onSave: widget.chickenId != null ? _saveToProfile : null,
             ),
+            // Follow-up tip
+            Builder(builder: (context) {
+              final tip = _buildFollowUpTip(
+                _result!,
+                int.tryParse(_ageController.text.trim()),
+                _breedController.text.trim().isNotEmpty
+                    ? _breedController.text.trim()
+                    : null,
+              );
+              if (tip == null) return const SizedBox.shrink();
+              return Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.lightbulb_outline,
+                          size: 16, color: Colors.grey.shade600),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          tip,
+                          style: TextStyle(
+                              fontSize: 12, color: Colors.grey.shade700),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
           ],
 
           const SizedBox(height: 32),
@@ -564,10 +672,19 @@ class _ResultCard extends StatelessWidget {
       _ => Colors.grey,
     };
 
+    final confidenceLabel = switch (result.confidence) {
+      'very_high' => 'Very high confidence',
+      'high'      => 'High confidence',
+      'moderate'  => 'Moderate confidence',
+      'low'       => 'Low confidence',
+      _           => 'Very low confidence',
+    };
     final confidenceColor = switch (result.confidence) {
-      'high' => const Color(0xFF5D8A3C),
-      'medium' => const Color(0xFFD4A017),
-      _ => Colors.grey,
+      'very_high' => const Color(0xFF2E7D32),
+      'high'      => const Color(0xFF5D8A3C),
+      'moderate'  => const Color(0xFFD4A017),
+      'low'       => Colors.deepOrange.shade600,
+      _           => Colors.red.shade700,
     };
 
     return Card(
@@ -598,7 +715,7 @@ class _ResultCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        '${result.confidence[0].toUpperCase()}${result.confidence.substring(1)} confidence',
+                        confidenceLabel,
                         style: TextStyle(
                             color: confidenceColor,
                             fontSize: 12,

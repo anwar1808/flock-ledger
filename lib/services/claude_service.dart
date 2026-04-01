@@ -154,29 +154,29 @@ If you cannot read the scale clearly, set weight_grams to null.''',
     String ageGuidance;
     if (ageWeeks == null) {
       ageGuidance = '''Age unknown — assess based on visible development stage.
-- If clearly very young (heavy down, no comb): expect low confidence
+- If clearly very young (heavy down, no comb): use very_low or low confidence
 - If feathered with visible comb: apply 6+ week guidance below''';
     } else if (ageWeeks < 4) {
       ageGuidance = '''At under 4 weeks, visual sexing is very difficult in most breeds.
 - Comb differences are minimal and unreliable at this age
-- Feather sexing (if applicable) is the most reliable cue — females feather faster in sex-linked breeds
-- Be honest about uncertainty — low or medium confidence is appropriate unless feather sexing applies''';
+- Feather sexing is the most reliable cue — females feather faster in sex-linked breeds
+- very_low or low confidence is appropriate unless a clear sex-linked colour pattern is present''';
     } else if (ageWeeks < 6) {
       ageGuidance = '''At 4–5 weeks, early comb differences are starting to emerge in some breeds.
 - Males may show a slightly larger, pinker comb but differences are often subtle
-- Fast, even feathering = more likely female in many breeds; patchy/slow = more likely male
-- Medium confidence is appropriate unless comb difference is pronounced''';
+- Fast, even feathering = more likely female; patchy/slow = more likely male
+- low or moderate confidence is appropriate unless comb difference is already pronounced''';
     } else if (ageWeeks < 10) {
       ageGuidance = '''At 6–9 weeks, secondary sex characteristics are clearly developing.
-- Males: noticeably larger and redder comb, early wattle buds, often larger body frame, coarser feathering
-- Females: small flat comb, no wattle development, finer feathering, typically smaller frame
-- When multiple cues agree, HIGH confidence is appropriate — do not hedge if the evidence is clear
-- Commercial broiler crosses (Hubbard, Ross, Cobb): males also show significantly faster weight gain and larger frame by this age''';
+- Males: noticeably larger and redder comb, early wattle buds, larger body frame, coarser feathering
+- Females: small flat comb, no wattle development, finer feathering, smaller frame
+- When multiple cues agree clearly: use high or very_high — do not hedge
+- Commercial broiler crosses (Hubbard, Ross, Cobb): males are also significantly larger-framed''';
     } else {
       ageGuidance = '''At 10+ weeks, sexing should be definitive in almost all breeds.
-- Cockerels: prominent comb and wattles (red and developed), pointed hackle and saddle feathers beginning, larger body
+- Cockerels: prominent red comb and wattles, pointed hackle/saddle feathers developing, larger body
 - Pullets: small pale comb, no wattles, rounded feathering, smaller frame
-- HIGH confidence is expected unless the breed is genuinely difficult (e.g. Silkies, some Sebrights)
+- high or very_high confidence is expected — only use moderate or lower if the breed is genuinely difficult (Silkies, Sebrights)
 - If you cannot determine sex at this age, explain exactly why in the reasoning''';
     }
 
@@ -202,10 +202,15 @@ Return ONLY valid JSON (no other text):
 
 Rules:
 - likely_sex must be exactly "female", "male", or "uncertain"
-- confidence must be "high" when two or more cues clearly agree; "medium" when cues are mixed or subtle; "low" when genuinely unclear
-- Do not default to "medium" as a safe hedge — commit to "high" when the evidence warrants it
-- reasoning should be 2–4 sentences covering the specific cues you observed
-- caveats is optional — only include if there is a genuine breed-specific or age-specific caveat; omit otherwise
+- confidence uses a 5-point scale — choose the most accurate level:
+    "very_low"  = under 4 weeks, or genuinely indeterminate at any age; multiple cues contradictory
+    "low"       = one weak cue points one way; others unclear or absent
+    "moderate"  = some cues agree but at least one contradicts or is ambiguous
+    "high"      = two or more independent cues clearly agree
+    "very_high" = all cues unanimously agree, OR breed is sex-linked/autosexing with an unambiguous pattern
+- Do NOT default to "moderate" as a safe hedge — use "high" or "very_high" when the evidence is there
+- reasoning should be 2–4 sentences covering each cue you observed and how it informed the verdict
+- caveats is optional — only include a genuine breed-specific or age-specific warning; omit otherwise
 - If multiple $birdTermPlural are shown, give the most common assessment and note any variation''',
     });
 
@@ -250,9 +255,16 @@ Rules:
     final parsed =
         jsonDecode(jsonMatch.group(0)!) as Map<String, dynamic>;
 
+    // Normalise any legacy 3-point values to 5-point scale
+    final rawConf = parsed['confidence'] as String? ?? 'low';
+    final confidence = switch (rawConf) {
+      'medium' => 'moderate',
+      _ => rawConf,
+    };
+
     return ChickSexResult(
       likelySex: parsed['likely_sex'] as String? ?? 'uncertain',
-      confidence: parsed['confidence'] as String? ?? 'low',
+      confidence: confidence,
       reasoning: parsed['reasoning'] as String? ?? '',
       caveats: parsed['caveats'] as String?,
     );
