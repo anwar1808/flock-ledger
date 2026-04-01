@@ -1,7 +1,7 @@
 name: flock_ledger
 description: FlockLedger — a personal app for raising and tracking your flock
 publish_to: 'none'
-version: 1.8.8+31
+version: 1.8.9+32
 
 environment:
   sdk: '>=3.0.0 <4.0.0'

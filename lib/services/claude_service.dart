@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import '../utils/breed_sexing_table.dart';
 
 class ClaudeEggResult {
   final double? weightGrams; // null if Claude couldn't read the scale
@@ -134,11 +135,19 @@ If you cannot read the scale clearly, set weight_grams to null.''',
     final birdTerm = isOlderBird ? 'pullet/cockerel' : 'chick';
     final birdTermPlural = isOlderBird ? 'pullets/cockerels' : 'chicks';
 
+    // Look up breed-specific sexing guidance
+    final breedInfo = breed != null && breed.isNotEmpty
+        ? lookupBreedSexingInfo(breed)
+        : null;
+
     final breedNote = breed != null && breed.isNotEmpty
         ? 'Breed: $breed.\n'
         : '';
     final ageNote = ageWeeks != null
         ? 'Age: approximately $ageWeeks weeks old.\n'
+        : '';
+    final breedGuidance = breedInfo != null
+        ? '\nBreed-specific notes:\n${breedInfo.promptNote}\n'
         : '';
 
     // Age-calibrated guidance for the prompt
@@ -173,7 +182,7 @@ If you cannot read the scale clearly, set weight_grams to null.''',
 
     imageContents.add({
       'type': 'text',
-      'text': '''${breedNote}${ageNote}
+      'text': '''${breedNote}${ageNote}${breedGuidance}
 $ageGuidance
 
 Assess the sex of the $birdTerm shown in these photos. Evaluate each cue systematically before giving your verdict:
