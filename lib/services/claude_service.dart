@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
@@ -65,15 +66,17 @@ If you cannot read the scale clearly, set weight_grams to null.''',
       ],
     };
 
-    final response = await http.post(
-      Uri.parse(_apiUrl),
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: jsonEncode(requestBody),
-    );
+    final response = await http
+        .post(
+          Uri.parse(_apiUrl),
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': apiKey,
+            'anthropic-version': '2023-06-01',
+          },
+          body: jsonEncode(requestBody),
+        )
+        .timeout(const Duration(seconds: 60));
 
     if (response.statusCode != 200) {
       throw ClaudeServiceException._fromStatus(response.statusCode);
@@ -165,15 +168,17 @@ Rules:
       ],
     };
 
-    final response = await http.post(
-      Uri.parse(_apiUrl),
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: jsonEncode(requestBody),
-    );
+    final response = await http
+        .post(
+          Uri.parse(_apiUrl),
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': apiKey,
+            'anthropic-version': '2023-06-01',
+          },
+          body: jsonEncode(requestBody),
+        )
+        .timeout(const Duration(seconds: 90));
 
     if (response.statusCode != 200) {
       throw ClaudeServiceException._fromStatus(response.statusCode);

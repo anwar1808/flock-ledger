@@ -1,6 +1,9 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 
 import 'package:uuid/uuid.dart';
@@ -75,6 +78,19 @@ class _ChickSexingScreenState extends State<ChickSexingScreen> {
     }
   }
 
+  Future<File?> _compressForApi(File source) async {
+    final dir = await getTemporaryDirectory();
+    final out = '${dir.path}/sex_${const Uuid().v4()}.jpg';
+    final result = await FlutterImageCompress.compressAndGetFile(
+      source.path,
+      out,
+      minWidth: 1024,
+      minHeight: 1024,
+      quality: 70,
+    );
+    return result != null ? File(result.path) : null;
+  }
+
   Future<void> _analyse() async {
     if (_photos.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -105,20 +121,43 @@ class _ChickSexingScreenState extends State<ChickSexingScreen> {
     });
 
     try {
+      // Compress all photos before sending — prevents connection drops on large files
+      final compressed = <File>[];
+      for (final photo in _photos) {
+        final c = await _compressForApi(photo);
+        compressed.add(c ?? photo); // fall back to original if compress fails
+      }
+
       final service = ClaudeService(apiKey);
       final result = await service.analyzeChickSex(
-        _photos,
+        compressed,
         breed: _breedController.text.trim().isNotEmpty
             ? _breedController.text.trim()
             : null,
         ageWeeks: int.tryParse(_ageController.text.trim()),
       );
       if (mounted) setState(() => _result = result);
+    } on TimeoutException {
+      if (mounted) {
+        setState(() {
+          _error = 'Request timed out — check your connection and try again.';
+          _errorIsAuth = false;
+        });
+      }
+    } on SocketException {
+      if (mounted) {
+        setState(() {
+          _error = 'No internet connection. Please check your network and try again.';
+          _errorIsAuth = false;
+        });
+      }
     } catch (e) {
       if (mounted) {
         final isAuth = e is ClaudeServiceException && e.isAuthError;
         setState(() {
-          _error = e is ClaudeServiceException ? e.message : e.toString();
+          _error = e is ClaudeServiceException
+              ? e.message
+              : 'Something went wrong. Please try again.';
           _errorIsAuth = isAuth;
         });
       }
