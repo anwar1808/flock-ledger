@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/ai_thread.dart';
@@ -197,16 +198,47 @@ class _MessageBubble extends StatelessWidget {
                   bottomRight: Radius.circular(isUser ? 4 : 16),
                 ),
               ),
-              child: Text(
-                message.content,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: isUser
-                      ? Colors.white
-                      : Theme.of(context).colorScheme.onSurface,
-                  height: 1.4,
-                ),
-              ),
+              child: isUser
+                  ? Text(
+                      message.content,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Colors.white,
+                        height: 1.4,
+                      ),
+                    )
+                  : MarkdownBody(
+                      data: message.content,
+                      styleSheet: MarkdownStyleSheet(
+                        p: TextStyle(
+                          fontSize: 14,
+                          color: Theme.of(context).colorScheme.onSurface,
+                          height: 1.4,
+                        ),
+                        strong: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
+                        em: TextStyle(
+                          fontSize: 14,
+                          fontStyle: FontStyle.italic,
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
+                        listBullet: TextStyle(
+                          fontSize: 14,
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
+                        blockquoteDecoration: BoxDecoration(
+                          border: Border(
+                            left: BorderSide(
+                              color: Colors.grey.shade400,
+                              width: 3,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
             ),
           ),
           if (isUser) const SizedBox(width: 36),

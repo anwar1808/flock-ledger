@@ -326,6 +326,50 @@ Rules:
     final content = (responseData['content'] as List).first;
     return (content as Map<String, dynamic>)['text'] as String;
   }
+
+  /// Generates a short descriptive thread title from the opening exchange.
+  /// Returns a 3–6 word plain-text title, or throws on failure.
+  Future<String> generateThreadTitle(
+      String userMessage, String assistantMessage) async {
+    // Trim assistant response to avoid large payloads — first 300 chars is enough context
+    final assistantSnippet = assistantMessage.length > 300
+        ? assistantMessage.substring(0, 300)
+        : assistantMessage;
+
+    final requestBody = {
+      'model': _chatModel,
+      'max_tokens': 16,
+      'messages': [
+        {
+          'role': 'user',
+          'content': 'User asked: "$userMessage"\n\n'
+              'Assistant replied: "$assistantSnippet"\n\n'
+              'Generate a short title (3–6 words) that describes the topic of this conversation. '
+              'Return only the title — no punctuation, no quotes, no explanation.',
+        }
+      ],
+    };
+
+    final response = await http
+        .post(
+          Uri.parse(_apiUrl),
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': apiKey,
+            'anthropic-version': '2023-06-01',
+          },
+          body: jsonEncode(requestBody),
+        )
+        .timeout(const Duration(seconds: 15));
+
+    if (response.statusCode != 200) {
+      throw ClaudeServiceException._fromStatus(response.statusCode);
+    }
+
+    final responseData = jsonDecode(response.body) as Map<String, dynamic>;
+    final content = (responseData['content'] as List).first;
+    return ((content as Map<String, dynamic>)['text'] as String).trim();
+  }
 }
 
 class ChickSexResult {

@@ -68,7 +68,7 @@ class _MainScreenState extends State<MainScreen> {
           NavigationDestination(
             icon: Icon(Icons.auto_awesome_outlined),
             selectedIcon: Icon(Icons.auto_awesome),
-            label: 'Ask',
+            label: 'ChickDaddyAI',
           ),
           NavigationDestination(
             icon: HenIcon(),

@@ -60,6 +60,35 @@ class AiChatProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Fires after the first assistant reply to set a descriptive thread title.
+  /// Runs in the background — silently swallows any errors.
+  Future<void> _generateTitle(
+    String threadId,
+    String userMessage,
+    String assistantMessage,
+    String apiKey,
+  ) async {
+    try {
+      final service = ClaudeService(apiKey);
+      final title =
+          await service.generateThreadTitle(userMessage, assistantMessage);
+      if (title.isEmpty) return;
+
+      final idx = _threads.indexWhere((t) => t.id == threadId);
+      if (idx == -1) return;
+
+      final updated = _threads[idx].copyWith(
+        title: title,
+        updatedAt: _threads[idx].updatedAt, // don't bump updatedAt for title change
+      );
+      await DatabaseHelper.instance.updateAiThread(updated);
+      _threads[idx] = updated;
+      notifyListeners();
+    } catch (_) {
+      // Silently fail — keep the truncated first-message title as fallback
+    }
+  }
+
   void clearError() {
     _error = null;
     _errorIsAuth = false;
@@ -200,6 +229,14 @@ class AiChatProvider extends ChangeNotifier {
       }
 
       await QuotaService.instance.increment();
+
+      // Generate a descriptive title after the first exchange (fire and forget)
+      final assistantCount = (_messages[threadId] ?? [])
+          .where((m) => m.role == 'assistant')
+          .length;
+      if (assistantCount == 1) {
+        unawaited(_generateTitle(threadId, userText, reply, apiKey));
+      }
     } on TimeoutException {
       _error = 'Request timed out — check your connection and try again.';
     } on SocketException {
