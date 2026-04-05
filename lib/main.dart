@@ -8,6 +8,7 @@ import 'providers/journal_provider.dart';
 import 'providers/egg_provider.dart';
 import 'providers/sexing_provider.dart';
 import 'providers/settings_provider.dart';
+import 'providers/ai_chat_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,6 +22,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => JournalProvider()),
         ChangeNotifierProvider(create: (_) => EggProvider()),
         ChangeNotifierProvider(create: (_) => SexingProvider()),
+        ChangeNotifierProvider(create: (_) => AiChatProvider()),
         ChangeNotifierProvider<SettingsProvider>.value(value: settings),
       ],
       child: const FlockLedgerApp(),

@@ -8,6 +8,7 @@ import '../widgets/hen_icon.dart';
 import '../widgets/coop_icon.dart';
 import 'home/home_screen.dart';
 import 'eggs/egg_tracker_screen.dart';
+import 'ask/ask_screen.dart';
 import 'flock/flock_screen.dart';
 import 'insights/insights_screen.dart';
 
@@ -40,6 +41,7 @@ class _MainScreenState extends State<MainScreen> {
     final screens = [
       const HomeScreen(),
       const EggTrackerScreen(),
+      const AskScreen(),
       const FlockScreen(),
       const InsightsScreen(),
     ];
@@ -62,6 +64,11 @@ class _MainScreenState extends State<MainScreen> {
             icon: Icon(Icons.egg_outlined),
             selectedIcon: Icon(Icons.egg),
             label: 'Eggs',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.auto_awesome_outlined),
+            selectedIcon: Icon(Icons.auto_awesome),
+            label: 'Ask',
           ),
           NavigationDestination(
             icon: HenIcon(),

@@ -17,6 +17,7 @@ class ClaudeEggResult {
 class ClaudeService {
   static const _apiUrl = 'https://api.anthropic.com/v1/messages';
   static const _model = 'claude-opus-4-6';
+  static const _chatModel = 'claude-haiku-4-5-20251001'; // cheaper for text chat
   static const _maxTokens = 256;
 
   final String apiKey;
@@ -270,6 +271,61 @@ Rules:
       caveats: parsed['caveats'] as String?,
     );
   }
+
+  /// Sends a chat message to ChickDaddyAI with full conversation history.
+  ///
+  /// [history] is a list of prior messages: each map has 'role' and 'content'.
+  /// [flockContext] is a pre-built string describing the user's flock.
+  Future<String> askChickDaddyAI(
+    List<Map<String, String>> history, {
+    required String flockContext,
+  }) async {
+    const systemPrompt =
+        'You are ChickDaddyAI, an expert poultry keeping assistant built into '
+        'the FlockLedger app. Help with: poultry and chicken health, breed advice, '
+        'flock management, incubation, hatching, egg production, meat bird raising, '
+        'feed, nutrition, coop and run setup, and homesteading topics directly '
+        'related to keeping birds. Use the flock data provided to give specific, '
+        'personalised answers where relevant.\n\n'
+        'If a question is not related to poultry, chickens, or bird-keeping, '
+        'politely decline and redirect to poultry topics.';
+
+    final fullSystem = flockContext.isNotEmpty
+        ? '$systemPrompt\n\n$flockContext'
+        : systemPrompt;
+
+    // Cap history at last 20 messages to stay within token budget
+    final trimmed = history.length > 20
+        ? history.sublist(history.length - 20)
+        : history;
+
+    final requestBody = {
+      'model': _chatModel,
+      'max_tokens': 1024,
+      'system': fullSystem,
+      'messages': trimmed,
+    };
+
+    final response = await http
+        .post(
+          Uri.parse(_apiUrl),
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': apiKey,
+            'anthropic-version': '2023-06-01',
+          },
+          body: jsonEncode(requestBody),
+        )
+        .timeout(const Duration(seconds: 60));
+
+    if (response.statusCode != 200) {
+      throw ClaudeServiceException._fromStatus(response.statusCode);
+    }
+
+    final responseData = jsonDecode(response.body) as Map<String, dynamic>;
+    final content = (responseData['content'] as List).first;
+    return (content as Map<String, dynamic>)['text'] as String;
+  }
 }
 
 class ChickSexResult {
@@ -287,7 +343,6 @@ class ChickSexResult {
     this.caveats,
   });
 }
-
 
 class ClaudeServiceException implements Exception {
   final String message;

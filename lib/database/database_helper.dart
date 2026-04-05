@@ -8,6 +8,8 @@ import '../models/journal_entry.dart';
 import '../models/chick_batch.dart';
 import '../models/egg_record.dart';
 import '../models/sexing_assessment.dart';
+import '../models/ai_thread.dart';
+import '../models/ai_message.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._internal();
@@ -25,7 +27,7 @@ class DatabaseHelper {
     final path = join(dbPath, 'chicken_journal.db');
     return openDatabase(
       path,
-      version: 8,
+      version: 9,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -151,6 +153,26 @@ class DatabaseHelper {
       )
     ''');
 
+    await db.execute('''
+      CREATE TABLE ai_threads (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE ai_messages (
+        id TEXT PRIMARY KEY,
+        thread_id TEXT NOT NULL,
+        role TEXT NOT NULL,
+        content TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (thread_id) REFERENCES ai_threads(id)
+      )
+    ''');
+
     // Indexes for common queries
     await db.execute(
         'CREATE INDEX idx_journal_date ON journal_entries(date DESC)');
@@ -254,6 +276,26 @@ class DatabaseHelper {
       // 'growing' status removed — migrate existing records to 'completed'
       await db.execute(
           "UPDATE chick_batches SET status = 'completed' WHERE status = 'growing'");
+    }
+    if (oldVersion < 9) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS ai_threads (
+          id TEXT PRIMARY KEY,
+          title TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        )
+      ''');
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS ai_messages (
+          id TEXT PRIMARY KEY,
+          thread_id TEXT NOT NULL,
+          role TEXT NOT NULL,
+          content TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          FOREIGN KEY (thread_id) REFERENCES ai_threads(id)
+        )
+      ''');
     }
   }
 
@@ -623,5 +665,55 @@ class DatabaseHelper {
       WHERE chicken_id = ? AND date >= ?
     ''', [chickenId, since]);
     return (result.first['count'] as int);
+  }
+
+  // ─────────────────────────────────────────
+  // AI THREADS
+  // ─────────────────────────────────────────
+
+  Future<void> insertAiThread(AiThread thread) async {
+    final db = await database;
+    await db.insert('ai_threads', thread.toMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<void> updateAiThread(AiThread thread) async {
+    final db = await database;
+    await db.update('ai_threads', thread.toMap(),
+        where: 'id = ?', whereArgs: [thread.id]);
+  }
+
+  Future<void> deleteAiThread(String id) async {
+    final db = await database;
+    await db.delete('ai_messages', where: 'thread_id = ?', whereArgs: [id]);
+    await db.delete('ai_threads', where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<List<AiThread>> getAllAiThreads() async {
+    final db = await database;
+    final maps =
+        await db.query('ai_threads', orderBy: 'updated_at DESC');
+    return maps.map(AiThread.fromMap).toList();
+  }
+
+  // ─────────────────────────────────────────
+  // AI MESSAGES
+  // ─────────────────────────────────────────
+
+  Future<void> insertAiMessage(AiMessage message) async {
+    final db = await database;
+    await db.insert('ai_messages', message.toMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<List<AiMessage>> getMessagesForThread(String threadId) async {
+    final db = await database;
+    final maps = await db.query(
+      'ai_messages',
+      where: 'thread_id = ?',
+      whereArgs: [threadId],
+      orderBy: 'created_at ASC',
+    );
+    return maps.map(AiMessage.fromMap).toList();
   }
 }
