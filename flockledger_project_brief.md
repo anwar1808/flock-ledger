@@ -447,7 +447,7 @@ Needs further refinement (details TBD — user to specify).
 ## How to run locally
 
 ```bash
-cd ~/Annie-Claude/chicken_journal
+cd ~/Annie-Claude/poultry/chicken_journal
 flutter pub get
 flutter run          # deploys to connected Android phone via USB
 ```
